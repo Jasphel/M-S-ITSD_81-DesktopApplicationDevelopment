@@ -1,5 +1,6 @@
 # M-S-ITSD_81-DesktopApplicationDevelopment
 This repository is for our ITSD81. I hope whoever views this to have a good day!
+NOTE: This project was made first in the visual studio, face-to-face by the pair-collectively. After that, it was pushed in Github by one account.
 Members: Mancawan, Claire Jasper D.
          Solon, Shekinah Myrrh O.
 
