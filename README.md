@@ -1,5 +1,7 @@
 # M-S-ITSD_81-DesktopApplicationDevelopment
 This repository is for our ITSD81. I hope whoever views this to have a good day!
+Members: Mancawan, Claire Jasper D.
+         Solon, Shekinah Myrrh O.
 
 
 # Equipment Borrowing System
