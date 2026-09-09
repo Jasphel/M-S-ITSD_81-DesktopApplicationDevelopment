@@ -1,4 +1,4 @@
-﻿using EquipmentBorrowing.Application.Services;
+using EquipmentBorrowing.Application.Services;
 using EquipmentBorrowing.Infrastructure.Repositories;
 using EquipmentBorrowing.Domain;
 
@@ -8,14 +8,14 @@ var borrowingRepository = new InMemoryBorrowingRepository();
 
 var student = new Student(
     1,
-    "Claire",
+    "Shekinah",
     true);
 
 studentRepository.Add(student);
 
-studentRepository.Add(new Student(2, "Jasper", true));
-studentRepository.Add(new Student(3, "Mancawan", true));
-studentRepository.Add(new Student(4, "Jack", false)); // not allowed to borrow, for testing that rule later
+studentRepository.Add(new Student(2, "Leila", true));
+studentRepository.Add(new Student(3, "Fluffy", true));
+studentRepository.Add(new Student(4, "Rajah", false)); // not allowed to borrow, for testing that rule later
 
 var equipment = new Equipment(
     1,
@@ -25,7 +25,7 @@ equipmentRepository.Add(equipment);
 
 equipmentRepository.Add(new Equipment(2, "Projector"));
 equipmentRepository.Add(new Equipment(3, "HDMI Cable"));
-equipmentRepository.Add(new Equipment(4, "DSLR Camera"));
+equipmentRepository.Add(new Equipment(4, "Keyboard"));
 equipmentRepository.Add(new Equipment(5, "Tripod"));
 
 var borrowEquipmentService = new BorrowEquipmentService(
@@ -40,9 +40,9 @@ var successfulBorrow = await borrowEquipmentService.BorrowEquipmentAsync(
     expectedReturnDate: DateTime.Now.AddDays(7));
 
 Console.WriteLine(
-    successfulBorrow.Succeeded
+    successfulBorrow
         ? "SUCCESS: Equipment was borrowed."
-        : $"FAILED: {successfulBorrow.FailureReason}");
+        : "FAILED: Equipment could not be borrowed.");
 
 var failedBorrow = await borrowEquipmentService.BorrowEquipmentAsync(
     borrowingId: 2,
@@ -51,6 +51,6 @@ var failedBorrow = await borrowEquipmentService.BorrowEquipmentAsync(
     expectedReturnDate: DateTime.Now.AddDays(7));
 
 Console.WriteLine(
-    failedBorrow.Succeeded
+    failedBorrow
         ? "SUCCESS: Equipment was borrowed."
-        : $"FAILED: {failedBorrow.FailureReason}");
+        : "FAILED: Equipment is unavailable.");
