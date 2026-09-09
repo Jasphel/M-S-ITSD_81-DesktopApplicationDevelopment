@@ -146,3 +146,48 @@ operation requested by the actor?**
 operation. Everything below it (the repositories) is just *fetching and
 storing* data on its behalf. The method itself is where the actual decision
 — can this student borrow this equipment right now — gets made.
+
+
+## Laboratory Activity 2: Desktop Integration
+
+### Desktop Project Architecture
+`EquipmentBorrowing.Desktop` serves as the presentation layer built using Avalonia UI and MVVM. It depends on `EquipmentBorrowing.Application` and `EquipmentBorrowing.Infrastructure` to execute operations without containing any business logic itself.
+
+### Layer Hierarchy
+Avalonia View -> ViewModel -> Application Service -> Domain / Repository Interface -> Infrastructure
+
+### Borrow Equipment Flow
+1. The user opens the **Equipment** screen. `MainWindowViewModel` calls `EquipmentViewModel.LoadAsync()`, fetching equipment and student records from repositories to populate the `ObservableCollection` bindings.
+2. The user selects an item from the equipment list, chooses a student from the dropdown, and sets an expected return date.
+3. The user clicks **Borrow Equipment**, triggering `BorrowCommand` on the `EquipmentViewModel`.
+4. `EquipmentViewModel` performs presentation validation (ensuring inputs are selected) and invokes `_borrowEquipmentService.BorrowEquipmentAsync(...)`.
+5. `BorrowEquipmentService` evaluates domain and application rules (e.g., equipment availability, borrowing limits) and returns a `BorrowResult`.
+6. `EquipmentViewModel` updates the `StatusMessage` based on the result and refreshes the list binding automatically.
+
+### Return Equipment Flow
+1. The user navigates to the **Active Borrowings** screen. `MainWindowViewModel` calls `BorrowingsViewModel.LoadAsync()` to fetch active borrowings.
+2. The user selects a borrowing record and clicks **Return Equipment**, triggering `ReturnCommand`.
+3. `BorrowingsViewModel` checks that a selection exists and calls `_returnEquipmentService.ReturnEquipmentAsync(...)`.
+4. `ReturnEquipmentService` retrieves the borrowing record, updates status flags via domain methods (`MarkAsReturned()`, `MarkAsAvailable()`), and updates repositories.
+5. `BorrowingsViewModel` updates the status message, clears selection, and refreshes active borrowings.
+
+### Architectural Reflection
+
+### 1. Why should the View not call a repository directly?
+Breaks separation of concerns. The View only handles UI rendering and user interactions. Direct repository access would bypass application workflows and business validation rules.
+
+### 2. Why should business rules not be implemented in the ViewModel?
+ViewModels manage presentation state and user input. Placing business logic in ViewModels leads to code duplication across UI platforms and causes inconsistencies when rules change.
+
+### 3. What is the responsibility of the ViewModel?
+To sit between the View and Application layer by holding bindable properties, exposing executable commands, performing presentation validation, and delegating business execution to application services.
+
+### 4. Why can the existing Application layer work without knowing that Avalonia is being used?
+The Application layer depends solely on C# abstractions and domain models. It has zero dependencies on Avalonia UI frameworks, making it portable across web, CLI, or desktop frontends.
+
+### 5. What advantage is gained from registering dependencies in one composition point?
+Centralizes object creation and lifecycle management (e.g., `App.axaml.cs`). Changing an implementation or lifetime configuration requires editing a single composition root rather than scattered source files.
+
+### 6. If the in-memory repository were replaced by SQLite later, which parts of the current interface should remain largely unchanged?
+All Views, ViewModels, and Application Services remain unchanged because they interact strictly with repository interfaces (`IEquipmentRepository`). Only the Infrastructure registration inside `App.axaml.cs` updates.
+
