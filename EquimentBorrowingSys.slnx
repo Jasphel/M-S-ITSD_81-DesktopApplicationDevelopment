@@ -3,4 +3,5 @@
   <Project Path="EquipmentBorrowing.Application/EquipmentBorrowing.Application.csproj" />
   <Project Path="EquipmentBorrowing.Domain/EquipmentBorrowing.Domain.csproj" />
   <Project Path="EquipmentBorrowing.Infrastructure/EquipmentBorrowing.Infrastructure.csproj" />
+  <Project Path="EquipmentBorrowing.Desktop/EquipmentBorrowing.Desktop.csproj" />
 </Solution>
