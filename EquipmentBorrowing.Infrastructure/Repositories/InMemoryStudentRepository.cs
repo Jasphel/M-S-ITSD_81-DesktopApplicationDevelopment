@@ -17,6 +17,12 @@ public class InMemoryStudentRepository : IStudentRepository
         return Task.FromResult(student);
     }
 
+    public Task<IReadOnlyList<Student>> GetAllAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IReadOnlyList<Student>>(_students.ToList());
+    }
+
     public void Add(Student student)
     {
         _students.Add(student);
