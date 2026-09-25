@@ -6,6 +6,33 @@ namespace EquipmentBorrowing.Infrastructure.Repositories;
 public class InMemoryBorrowingRepository : IBorrowingRepository
 {
     private readonly List<Borrowing> _borrowings = new();
+    private int _nextId = 1;
+
+    public Task<int> GetNextIdAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(_nextId++);
+    }
+
+    public Task<Borrowing?> GetByIdAsync(
+        int id,
+        CancellationToken cancellationToken = default)
+    {
+        var borrowing = _borrowings.FirstOrDefault(
+            borrowing => borrowing.Id == id);
+
+        return Task.FromResult(borrowing);
+    }
+
+    public Task<IReadOnlyList<Borrowing>> GetActiveAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var active = _borrowings
+            .Where(borrowing => borrowing.Status == BorrowingStatus.Active)
+            .ToList();
+
+        return Task.FromResult<IReadOnlyList<Borrowing>>(active);
+    }
 
     public Task<int> CountActiveByStudentIdAsync(
         int studentId,

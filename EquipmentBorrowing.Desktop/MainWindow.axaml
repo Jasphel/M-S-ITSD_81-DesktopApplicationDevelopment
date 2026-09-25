@@ -1,0 +1,36 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:EquipmentBorrowing.Desktop.ViewModels"
+        x:Class="EquipmentBorrowing.Desktop.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="Campus Equipment Borrowing System"
+        Width="900" Height="600"
+        MinWidth="720" MinHeight="480">
+
+  <Grid RowDefinitions="Auto,*">
+
+    <Border Grid.Row="0" Classes="titleBar">
+      <TextBlock Text="Campus Equipment Borrowing System" Classes="heading" />
+    </Border>
+
+    <Grid Grid.Row="1" ColumnDefinitions="200,*">
+
+      <!-- Navigation sidebar -->
+      <StackPanel Grid.Column="0" Classes="sidebar" Spacing="4">
+        <Button Content="Equipment"
+                Classes="navButton"
+                Command="{Binding ShowEquipmentCommand}" />
+        <Button Content="Active Borrowings"
+                Classes="navButton"
+                Command="{Binding ShowBorrowingsCommand}" />
+      </StackPanel>
+
+      <!-- Current view -->
+      <Border Grid.Column="1" Classes="contentArea">
+        <ContentControl Content="{Binding CurrentViewModel}" />
+      </Border>
+
+    </Grid>
+  </Grid>
+
+</Window>

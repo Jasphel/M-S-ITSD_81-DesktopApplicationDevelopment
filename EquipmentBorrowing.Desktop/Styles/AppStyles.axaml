@@ -1,0 +1,99 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <!-- Top title bar -->
+  <Style Selector="Border.titleBar">
+    <Setter Property="Background" Value="#1F2937" />
+    <Setter Property="Padding" Value="16,12" />
+  </Style>
+  <Style Selector="Border.titleBar TextBlock.heading">
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="FontSize" Value="18" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <!-- Navigation sidebar -->
+  <Style Selector="StackPanel.sidebar">
+    <Setter Property="Background" Value="#F3F4F6" />
+    <Setter Property="Margin" Value="0" />
+  </Style>
+  <Style Selector="Button.navButton">
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Padding" Value="16,10" />
+    <Setter Property="Margin" Value="8,8,8,0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector="Button.navButton:pointerover">
+    <Setter Property="Background" Value="#E5E7EB" />
+  </Style>
+
+  <!-- Content area -->
+  <Style Selector="Border.contentArea">
+    <Setter Property="Background" Value="White" />
+  </Style>
+
+  <!-- Section headings -->
+  <Style Selector="TextBlock.sectionHeading">
+    <Setter Property="FontSize" Value="16" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Margin" Value="0,0,0,10" />
+  </Style>
+
+  <!-- Field labels -->
+  <Style Selector="TextBlock.fieldLabel">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="#6B7280" />
+    <Setter Property="Margin" Value="0,4,0,0" />
+  </Style>
+
+  <!-- Panels / cards (the borrow form, the return panel) -->
+  <Style Selector="Border.panel">
+    <Setter Property="Background" Value="#F9FAFB" />
+    <Setter Property="BorderBrush" Value="#E5E7EB" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="8" />
+    <Setter Property="Padding" Value="16" />
+  </Style>
+
+  <!-- List rows -->
+  <Style Selector="Border.listRow">
+    <Setter Property="Padding" Value="10,8" />
+    <Setter Property="BorderBrush" Value="#E5E7EB" />
+    <Setter Property="BorderThickness" Value="0,0,0,1" />
+  </Style>
+
+  <!-- Availability badges -->
+  <Style Selector="TextBlock.badge">
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="HorizontalAlignment" Value="Right" />
+  </Style>
+  <Style Selector="TextBlock.badgeAvailable">
+    <Setter Property="Foreground" Value="#15803D" />
+  </Style>
+  <Style Selector="TextBlock.badgeUnavailable">
+    <Setter Property="Foreground" Value="#B91C1C" />
+  </Style>
+
+  <!-- Primary action button -->
+  <Style Selector="Button.primaryButton">
+    <Setter Property="Background" Value="#1F2937" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="Padding" Value="14,10" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+  <Style Selector="Button.primaryButton:pointerover">
+    <Setter Property="Background" Value="#374151" />
+  </Style>
+
+  <!-- Status / feedback messages -->
+  <Style Selector="TextBlock.statusMessage">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="#374151" />
+    <Setter Property="Margin" Value="0,4,0,0" />
+  </Style>
+
+</Styles>

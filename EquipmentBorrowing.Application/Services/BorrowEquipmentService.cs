@@ -1,4 +1,5 @@
-﻿using EquipmentBorrowing.Application.Interfaces;
+using EquipmentBorrowing.Application.Interfaces;
+using EquipmentBorrowing.Application.Results;
 using EquipmentBorrowing.Domain;
 
 namespace EquipmentBorrowing.Application.Services;
@@ -19,7 +20,7 @@ public class BorrowEquipmentService
         _borrowingRepository = borrowingRepository;
     }
 
-    public async Task<bool> BorrowEquipmentAsync(
+    public async Task<BorrowResult> BorrowEquipmentAsync(
         int borrowingId,
         int studentId,
         int equipmentId,
@@ -32,12 +33,12 @@ public class BorrowEquipmentService
 
         if (student is null)
         {
-            return false;
+            return BorrowResult.Fail(BorrowFailureReason.StudentNotFound);
         }
 
         if (!student.IsAllowedToBorrow)
         {
-            return false;
+            return BorrowResult.Fail(BorrowFailureReason.StudentNotAllowedToBorrow);
         }
 
         const int maximumActiveBorrowings = 3;
@@ -49,7 +50,7 @@ public class BorrowEquipmentService
 
         if (activeBorrowings >= maximumActiveBorrowings)
         {
-            return false;
+            return BorrowResult.Fail(BorrowFailureReason.BorrowingLimitReached);
         }
 
         var equipment = await _equipmentRepository.GetByIdAsync(
@@ -58,12 +59,12 @@ public class BorrowEquipmentService
 
         if (equipment is null)
         {
-            return false;
+            return BorrowResult.Fail(BorrowFailureReason.EquipmentNotFound);
         }
 
         if (!equipment.IsAvailable)
         {
-            return false;
+            return BorrowResult.Fail(BorrowFailureReason.EquipmentUnavailable);
         }
 
         var borrowing = new Borrowing(
@@ -79,6 +80,6 @@ public class BorrowEquipmentService
             borrowing,
             cancellationToken);
 
-        return true;
+        return BorrowResult.Success();
     }
 }
