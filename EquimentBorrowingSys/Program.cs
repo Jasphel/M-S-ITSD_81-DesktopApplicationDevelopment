@@ -1,31 +1,23 @@
-﻿using EquipmentBorrowing.Application.Services;
-using EquipmentBorrowing.Infrastructure.Repositories;
+using System;
+using EquipmentBorrowing.Application.Services;
 using EquipmentBorrowing.Domain;
+using EquipmentBorrowing.Infrastructure.Repositories;
 
 var studentRepository = new InMemoryStudentRepository();
 var equipmentRepository = new InMemoryEquipmentRepository();
 var borrowingRepository = new InMemoryBorrowingRepository();
 
-var student = new Student(
-    1,
-    "Claire",
-    true);
+// Seed Students
+studentRepository.Add(new Student(1, "Shekinah", true));
+studentRepository.Add(new Student(2, "Leila", true));
+studentRepository.Add(new Student(3, "Fluffy", true));
+studentRepository.Add(new Student(4, "Rajah", false)); // not allowed to borrow, for testing
 
-studentRepository.Add(student);
-
-studentRepository.Add(new Student(2, "Jasper", true));
-studentRepository.Add(new Student(3, "Mancawan", true));
-studentRepository.Add(new Student(4, "Jack", false)); // not allowed to borrow, for testing that rule later
-
-var equipment = new Equipment(
-    1,
-    "Laptop");
-
-equipmentRepository.Add(equipment);
-
+// Seed Equipment
+equipmentRepository.Add(new Equipment(1, "Laptop"));
 equipmentRepository.Add(new Equipment(2, "Projector"));
 equipmentRepository.Add(new Equipment(3, "HDMI Cable"));
-equipmentRepository.Add(new Equipment(4, "DSLR Camera"));
+equipmentRepository.Add(new Equipment(4, "Keyboard"));
 equipmentRepository.Add(new Equipment(5, "Tripod"));
 
 var borrowEquipmentService = new BorrowEquipmentService(
@@ -33,6 +25,7 @@ var borrowEquipmentService = new BorrowEquipmentService(
     equipmentRepository,
     borrowingRepository);
 
+// First Borrow Attempt (Valid)
 var successfulBorrow = await borrowEquipmentService.BorrowEquipmentAsync(
     borrowingId: 1,
     studentId: 1,
@@ -44,6 +37,7 @@ Console.WriteLine(
         ? "SUCCESS: Equipment was borrowed."
         : $"FAILED: {successfulBorrow.FailureReason}");
 
+// Second Borrow Attempt (Duplicate / Unavailable Equipment)
 var failedBorrow = await borrowEquipmentService.BorrowEquipmentAsync(
     borrowingId: 2,
     studentId: 1,

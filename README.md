@@ -1,5 +1,15 @@
 # Equipment Borrowing System
 
+# M-S-ITSD_81-DesktopApplicationDevelopment
+
+This repository is for our ITSD81, Desktop Application Development.
+
+NOTE: This project was made first in Visual Studio, face-to-face by the pair collectively. After that, it was pushed to GitHub by one account.
+
+Members:
+- Mancawan, Claire Jasper
+- Solon, Shekinah Myrrh 
+
 Laboratory Activity 1 — ITSD 81, Desktop Application Development.
 
 This repository contains the initial architectural foundation for a campus
