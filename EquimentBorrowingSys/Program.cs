@@ -8,15 +8,13 @@ var equipmentRepository = new InMemoryEquipmentRepository();
 var borrowingRepository = new InMemoryBorrowingRepository();
 
 // Seed Students
-var student = new Student(1, "Shekinah", true);
-studentRepository.Add(student);
+studentRepository.Add(new Student(1, "Shekinah", true));
 studentRepository.Add(new Student(2, "Leila", true));
 studentRepository.Add(new Student(3, "Fluffy", true));
-studentRepository.Add(new Student(4, "Rajah", false)); // not allowed to borrow, for testing that rule later
+studentRepository.Add(new Student(4, "Rajah", false)); // not allowed to borrow, for testing
 
 // Seed Equipment
-var equipment = new Equipment(1, "Laptop");
-equipmentRepository.Add(equipment);
+equipmentRepository.Add(new Equipment(1, "Laptop"));
 equipmentRepository.Add(new Equipment(2, "Projector"));
 equipmentRepository.Add(new Equipment(3, "HDMI Cable"));
 equipmentRepository.Add(new Equipment(4, "Keyboard"));
@@ -34,7 +32,10 @@ var successfulBorrow = await borrowEquipmentService.BorrowEquipmentAsync(
     equipmentId: 1,
     expectedReturnDate: DateTime.Now.AddDays(7));
 
-Console.WriteLine($"First Attempt: {successfulBorrow}");
+Console.WriteLine(
+    successfulBorrow.Succeeded
+        ? "SUCCESS: Equipment was borrowed."
+        : $"FAILED: {successfulBorrow.FailureReason}");
 
 // Second Borrow Attempt (Duplicate / Unavailable Equipment)
 var failedBorrow = await borrowEquipmentService.BorrowEquipmentAsync(
@@ -43,4 +44,7 @@ var failedBorrow = await borrowEquipmentService.BorrowEquipmentAsync(
     equipmentId: 1,
     expectedReturnDate: DateTime.Now.AddDays(7));
 
-Console.WriteLine($"Second Attempt: {failedBorrow}");
+Console.WriteLine(
+    failedBorrow.Succeeded
+        ? "SUCCESS: Equipment was borrowed."
+        : $"FAILED: {failedBorrow.FailureReason}");
