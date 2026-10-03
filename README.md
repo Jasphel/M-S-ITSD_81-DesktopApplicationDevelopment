@@ -368,3 +368,82 @@ change at all — they only ever talk to the repository *interfaces*. Only
 `ConfigureServices` in `App.axaml.cs` would change, to register
 `SqliteStudentRepository : IStudentRepository` instead of
 `InMemoryStudentRepository`.
+
+## Laboratory Activity 3: Relational Persistence with EF Core
+
+### 1. Relational Database Design
+The persistence layer was transitioned from temporary in-memory collections to a normalized relational database.
+
+* **STUDENTS Table:** Stores student profiles with `StudentId` (PK), `StudentNumber`, `FullName`, and `IsAllowedToBorrow`.
+* **EQUIPMENT Table:** Stores equipment records with `EquipmentId` (PK), `Name`, `Type`, and `IsAvailable`.
+* **BORROWINGS Table:** Connects students and equipment using `BorrowingId` (PK), `StudentId` (FK), `EquipmentId` (FK), `BorrowedAt`, `ExpectedReturnAt`, `ReturnedAt`, and `Status`.
+
+### 2. Database & Entity Framework Core Integration
+Persistence was added using Entity Framework Core. The `EquipmentBorrowing.Infrastructure` project was configured with the relational database provider and EF Core tooling, keeping all database-specific dependencies strictly isolated within the Infrastructure layer.
+
+### 3. DbContext Responsibility
+`EquipmentBorrowingDbContext` acts as the primary gateway to the database. It exposes `DbSet<Student>`, `DbSet<Equipment>`, and `DbSet<Borrowing>` properties, managing change tracking, entity configurations, and database transactions behind repository boundaries.
+
+### 4. Repository Transition
+The application architecture was preserved by maintaining repository abstractions:
+* **Previous Flow:** `Avalonia View` -> `ViewModel` -> `Application Service` -> `IRepository` -> `InMemoryRepository`
+* **Current Flow:** `Avalonia View` -> `ViewModel` -> `Application Service` -> `IRepository` -> `EfRepository` -> `EquipmentBorrowingDbContext` -> `Database`
+
+### 5. Migration Process
+Database schema creation and evolution were managed through EF Core Migrations using standard CLI tools:
+```bash
+dotnet ef migrations add InitialCreate --project src/EquipmentBorrowing.Infrastructure --startup-project src/EquipmentBorrowing.Desktop
+dotnet ef database update --project src/EquipmentBorrowing.Infrastructure --startup-project src/EquipmentBorrowing.Desktop
+
+
+## Documentation & Reflection
+
+### 1. Architecture Transition Overview
+The Equipment Borrowing System was successfully refactored from an in-memory storage architecture to a persistent PostgreSQL database using Entity Framework Core (EF Core). 
+
+#### Architectural Layering:
+1. Presentation Layer (Avalonia UI / MVVM): Interacts exclusively with Application Services and ViewModels. Contains zero references to DbContext or raw SQL.
+2. Application Layer: Contains business logic and service classes (BorrowEquipmentService). Interacts with persistence strictly through repository interfaces (IBorrowingRepository, IStudentRepository, IEquipmentRepository).
+3. Infrastructure Layer (EF Core & PostgreSQL): Implements concrete repositories using BorrowingDbContext. Configured via Dependency Injection (AddDbContext) with Npgsql legacy timestamp compatibility.
+4. Database Layer: Local PostgreSQL instance (EquipmentBorrowingDb) storing transactional data across Students, Equipment, and Borrowings tables.
+
+---
+
+### 2. Raw SQL Queries & Schema Verification
+
+#### Active Borrowings Verification Query:
+SELECT * FROM "Borrowings";
+
+#### Query Execution Output (pgAdmin Verification):
+Id | StudentId | EquipmentId | DateBorrowed | ExpectedReturnDate | Status
+1  | 2         | 1           | 2026-10-01 04:49:10.344479+00 | 2026-10-08 04:48:57.323867+00 | 0
+
+#### EF Core Generated SQL Translation (Equivalent):
+SELECT b."Id", b."DateBorrowed", b."ExpectedReturnDate", b."EquipmentId", b."Status", b."StudentId"
+FROM "Borrowings" AS b
+WHERE b."Status" = 0;
+
+---
+
+### 3. Reflection & Key Technical Challenges
+
+#### Key Technical Insights & Solutions:
+
+1. PostgreSQL Sequence Synchronization:
+   - Challenge: Manually seeding initial rows in pgAdmin caused PostgreSQL's primary key auto-increment sequence to fall out of sync, leading to duplicate key violations (23505) on new record insertions.
+   - Solution: Executed `SELECT setval(pg_get_serial_sequence('"Borrowings"', 'Id'), coalesce(max("Id"), 0) + 1, false) FROM "Borrowings";` to realign the primary key sequence.
+
+2. Entity State & Object Tracking in EF Core:
+   - Challenge: When creating a new borrowing, EF Core attempted to re-insert pre-existing navigation entities (Student and Equipment), causing primary key conflicts.
+   - Solution: Configured entity tracking states or mapped explicit Foreign Key IDs (StudentId, EquipmentId) to ensure EF Core treats related entities as existing database records.
+
+3. Npgsql DateTime Timezone Handling:
+   - Challenge: Npgsql strict typing rejected local DateTime values when inserting into PostgreSQL `timestamp with time zone` columns, throwing an ArgumentException.
+   - Solution: Enabled global legacy timestamp behavior in Program.cs via `AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);`.
+
+---
+
+### 4. Verification of Persistence Workflow
+- Created a borrowing transaction through the Avalonia Desktop UI.
+- Verified data insertion directly inside the PostgreSQL database using pgAdmin.
+- Closed and reopened the Avalonia application; confirmed active borrowings were fetched correctly on startup.

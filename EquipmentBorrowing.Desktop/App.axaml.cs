@@ -8,6 +8,9 @@ using EquipmentBorrowing.Desktop.Views;
 using EquipmentBorrowing.Domain;
 using EquipmentBorrowing.Infrastructure.Repositories;
 using Microsoft.Extensions.DependencyInjection;
+using EquipmentBorrowing.Infrastructure.Data;
+using Microsoft.EntityFrameworkCore;
+using System.Linq; 
 
 namespace EquipmentBorrowing.Desktop;
 
@@ -32,7 +35,7 @@ public partial class App : Avalonia.Application
 
             Services = services.BuildServiceProvider();
 
-            SeedDemoData(Services);
+            // Task.Run(async () => await SeedDemoDataAsync(Services)).Wait();
 
             desktop.MainWindow = new MainWindow
             {
@@ -54,17 +57,25 @@ public partial class App : Avalonia.Application
     /// </summary>
     private static void ConfigureServices(IServiceCollection services)
     {
-        services.AddSingleton<IStudentRepository, InMemoryStudentRepository>();
-        services.AddSingleton<IEquipmentRepository, InMemoryEquipmentRepository>();
-        services.AddSingleton<IBorrowingRepository, InMemoryBorrowingRepository>();
+        // 1. Register DbContext connected to PostgreSQL
+        services.AddDbContext<BorrowingDbContext>(options =>
+            options.UseNpgsql("Host=localhost;Port=5432;Database=EquipmentBorrowingDb;Username=postgres;Password=admin123"));
 
+        // 2. Swap In-Memory Repositories for EF Core Repositories
+        services.AddScoped<IStudentRepository, StudentRepository>();
+        services.AddScoped<IEquipmentRepository, EquipmentRepository>();
+        services.AddScoped<IBorrowingRepository, BorrowingRepository>();
+
+        // 3. Preserve Application Services (Part I)
         services.AddTransient<BorrowEquipmentService>();
         services.AddTransient<ReturnEquipmentService>();
 
+        // 4. ViewModels
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<EquipmentViewModel>();
         services.AddTransient<BorrowingsViewModel>();
     }
+}
 
     /// <summary>
     /// Same demo data as the Laboratory Activity 1 console project
@@ -72,20 +83,28 @@ public partial class App : Avalonia.Application
     /// repositories that this app's container resolves, so the desktop
     /// app has something to show without needing its own data source.
     /// </summary>
-    private static void SeedDemoData(IServiceProvider services)
+    /*private static async Task SeedDemoDataAsync(IServiceProvider services)
     {
-        var studentRepository = (InMemoryStudentRepository)services.GetRequiredService<IStudentRepository>();
-        var equipmentRepository = (InMemoryEquipmentRepository)services.GetRequiredService<IEquipmentRepository>();
+        using var scope = services.CreateScope();
+        var studentRepo = scope.ServiceProvider.GetRequiredService<IStudentRepository>();
+        var equipmentRepo = scope.ServiceProvider.GetRequiredService<IEquipmentRepository>();
 
-        studentRepository.Add(new Student(1, "Claire", true));
-        studentRepository.Add(new Student(2, "Jasper", true));
-        studentRepository.Add(new Student(3, "Mancawan", true));
-        studentRepository.Add(new Student(4, "Jack", false)); // not allowed to borrow
+        var existingStudents = await studentRepo.GetAllAsync();
+        if (!existingStudents.Any())
+        {
+            await studentRepo.AddAsync(new Student(1, "Claire", true));
+            await studentRepo.AddAsync(new Student(2, "Jasper", true));
+            await studentRepo.AddAsync(new Student(3, "Mancawan", true));
+            await studentRepo.AddAsync(new Student(4, "Jack", false));
+        }
 
-        equipmentRepository.Add(new Equipment(1, "Laptop"));
-        equipmentRepository.Add(new Equipment(2, "Projector"));
-        equipmentRepository.Add(new Equipment(3, "HDMI Cable"));
-        equipmentRepository.Add(new Equipment(4, "DSLR Camera"));
-        equipmentRepository.Add(new Equipment(5, "Tripod"));
-    }
-}
+        var existingEquipment = await equipmentRepo.GetAllAsync();
+        if (!existingEquipment.Any())
+        {
+            await equipmentRepo.AddAsync(new Equipment(1, "Laptop"));
+            await equipmentRepo.AddAsync(new Equipment(2, "Projector"));
+            await equipmentRepo.AddAsync(new Equipment(3, "HDMI Cable"));
+            await equipmentRepo.AddAsync(new Equipment(4, "DSLR Camera"));
+            await equipmentRepo.AddAsync(new Equipment(5, "Tripod"));
+        }
+    }*/
