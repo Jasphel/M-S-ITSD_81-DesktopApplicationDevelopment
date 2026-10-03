@@ -27,4 +27,12 @@ public class InMemoryEquipmentRepository : IEquipmentRepository
     {
         _equipment.Add(equipment);
     }
+
+    public Task UpdateAsync(
+    Equipment equipment,
+    CancellationToken cancellationToken = default)
+    {
+        // In-memory object is already updated by reference
+        return Task.CompletedTask;
+    }
 }

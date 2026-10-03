@@ -30,4 +30,16 @@ public class EquipmentRepository : IEquipmentRepository
         return await _context.Equipment
             .ToListAsync(cancellationToken);
     }
+
+    public async Task UpdateAsync(
+    Equipment equipment,
+    CancellationToken cancellationToken = default)
+    {
+        var existing = await _context.Equipment.FindAsync(new object[] { equipment.Id }, cancellationToken);
+        if (existing != null)
+        {
+            _context.Entry(existing).CurrentValues.SetValues(equipment);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+    }
 }

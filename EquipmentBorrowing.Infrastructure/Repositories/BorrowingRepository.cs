@@ -64,4 +64,16 @@ public class BorrowingRepository : IBorrowingRepository
 
         await _context.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task UpdateAsync(
+    Borrowing borrowing,
+    CancellationToken cancellationToken = default)
+    {
+        var existing = await _context.Borrowings.FindAsync(new object[] { borrowing.Id }, cancellationToken);
+        if (existing != null)
+        {
+            _context.Entry(existing).CurrentValues.SetValues(borrowing);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+    }
 }

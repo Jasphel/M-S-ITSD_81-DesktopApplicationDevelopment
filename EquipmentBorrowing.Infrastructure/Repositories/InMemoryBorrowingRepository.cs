@@ -46,6 +46,14 @@ public class InMemoryBorrowingRepository : IBorrowingRepository
         return Task.FromResult(count);
     }
 
+    public Task UpdateAsync(
+    Borrowing borrowing,
+    CancellationToken cancellationToken = default)
+    {
+        // In-memory object is already updated by reference
+        return Task.CompletedTask;
+    }
+
     public Task AddAsync(
         Borrowing borrowing,
         CancellationToken cancellationToken = default)

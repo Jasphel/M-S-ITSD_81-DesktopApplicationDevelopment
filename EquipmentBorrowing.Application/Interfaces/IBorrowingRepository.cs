@@ -27,4 +27,8 @@ public interface IBorrowingRepository
     Task AddAsync(
         Borrowing borrowing,
         CancellationToken cancellationToken = default);
+
+    Task UpdateAsync(
+        Borrowing borrowing,
+        CancellationToken cancellationToken = default);
 }
