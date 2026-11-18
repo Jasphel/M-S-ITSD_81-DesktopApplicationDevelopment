@@ -30,6 +30,9 @@ namespace EquipmentBorrowing.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("ActualReturnDate")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<DateTime>("DateBorrowed")
                         .HasColumnType("timestamp with time zone");
 
@@ -47,6 +50,12 @@ namespace EquipmentBorrowing.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("EquipmentId")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 0");
+
+                    b.HasIndex("StudentId");
+
                     b.ToTable("Borrowings");
                 });
 
@@ -58,6 +67,15 @@ namespace EquipmentBorrowing.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
+
+                    b.Property<string>("Identifier")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.Property<bool>("IsAvailable")
                         .HasColumnType("boolean");
 
@@ -67,6 +85,9 @@ namespace EquipmentBorrowing.Infrastructure.Migrations
                         .HasColumnType("character varying(100)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("Identifier")
+                        .IsUnique();
 
                     b.ToTable("Equipment");
                 });
@@ -79,6 +100,10 @@ namespace EquipmentBorrowing.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ContactInfo")
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
                     b.Property<bool>("IsAllowedToBorrow")
                         .HasColumnType("boolean");
 
@@ -87,9 +112,32 @@ namespace EquipmentBorrowing.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("StudentNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
+
                     b.HasKey("Id");
 
+                    b.HasIndex("StudentNumber")
+                        .IsUnique();
+
                     b.ToTable("Students");
+                });
+
+            modelBuilder.Entity("EquipmentBorrowing.Domain.Borrowing", b =>
+                {
+                    b.HasOne("EquipmentBorrowing.Domain.Equipment", null)
+                        .WithMany()
+                        .HasForeignKey("EquipmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EquipmentBorrowing.Domain.Student", null)
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

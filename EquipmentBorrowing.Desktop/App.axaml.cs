@@ -1,3 +1,8 @@
+using System;
+using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
@@ -6,19 +11,15 @@ using EquipmentBorrowing.Application.Services;
 using EquipmentBorrowing.Desktop.ViewModels;
 using EquipmentBorrowing.Desktop.Views;
 using EquipmentBorrowing.Domain;
-using EquipmentBorrowing.Infrastructure.Repositories;
-using Microsoft.Extensions.DependencyInjection;
 using EquipmentBorrowing.Infrastructure.Data;
+using EquipmentBorrowing.Infrastructure.Repositories;
 using Microsoft.EntityFrameworkCore;
-using System.Linq; 
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EquipmentBorrowing.Desktop;
 
 public partial class App : Avalonia.Application
 {
-    // Exposed so any ViewModel that needs to resolve something later
-    // (not required by this activity, but keeps the composition root
-    // discoverable) can reach the same container.
     public static IServiceProvider Services { get; private set; } = null!;
 
     public override void Initialize()
@@ -35,7 +36,15 @@ public partial class App : Avalonia.Application
 
             Services = services.BuildServiceProvider();
 
-            // Task.Run(async () => await SeedDemoDataAsync(Services)).Wait();
+            // Safe startup seeding: only inserts initial data if tables are empty
+            try
+            {
+                Task.Run(async () => await SeedDemoDataAsync(Services)).Wait();
+            }
+            catch
+            {
+                // Allow UI to launch even if DB is offline so Views can show connection error states (BR-18/BR-19)
+            }
 
             desktop.MainWindow = new MainWindow
             {
@@ -46,44 +55,57 @@ public partial class App : Avalonia.Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    /// <summary>
-    /// The single composition point for the whole desktop app (Part H).
-    /// Repositories are registered as Singleton — the in-memory
-    /// repositories only hold data because the *same instance* is reused
-    /// for the life of the app. If these were Transient, every screen
-    /// would silently get its own empty repository, and switching
-    /// between Equipment and Active Borrowings would look like data kept
-    /// disappearing.
-    /// </summary>
     private static void ConfigureServices(IServiceCollection services)
     {
-        // 1. Register DbContext connected to PostgreSQL
-        services.AddDbContext<BorrowingDbContext>(options =>
-            options.UseNpgsql("Host=localhost;Port=5432;Database=EquipmentBorrowingDb;Username=postgres;Password=admin123"));
+        var connectionString = ResolveConnectionString();
 
-        // 2. Swap In-Memory Repositories for EF Core Repositories
-        services.AddScoped<IStudentRepository, StudentRepository>();
-        services.AddScoped<IEquipmentRepository, EquipmentRepository>();
-        services.AddScoped<IBorrowingRepository, BorrowingRepository>();
+        // Register DbContext with Transient lifetime so each resolved service/scope gets an isolated context
+        // avoiding concurrent async DbContext access in desktop ViewModels
+        services.AddDbContext<BorrowingDbContext>(
+            options => options.UseNpgsql(connectionString),
+            contextLifetime: ServiceLifetime.Transient,
+            optionsLifetime: ServiceLifetime.Singleton);
 
-        // 3. Preserve Application Services (Part I)
+        // Repositories (Transient to pair cleanly with isolated DbContext instances)
+        services.AddTransient<IStudentRepository, StudentRepository>();
+        services.AddTransient<IEquipmentRepository, EquipmentRepository>();
+        services.AddTransient<IBorrowingRepository, BorrowingRepository>();
+
+        // Existing Application Services (UC-01 to UC-05)
         services.AddTransient<BorrowEquipmentService>();
         services.AddTransient<ReturnEquipmentService>();
 
-        // 4. ViewModels
+        // ViewModels
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<EquipmentViewModel>();
         services.AddTransient<BorrowingsViewModel>();
     }
-}
 
-    /// <summary>
-    /// Same demo data as the Laboratory Activity 1 console project
-    /// (EquimentBorrowingSys/Program.cs), just seeded through the
-    /// repositories that this app's container resolves, so the desktop
-    /// app has something to show without needing its own data source.
-    /// </summary>
-    /*private static async Task SeedDemoDataAsync(IServiceProvider services)
+    private static string ResolveConnectionString()
+    {
+        // 1. Check environment variable first (no secrets in source code)
+        var envConn = Environment.GetEnvironmentVariable("EBS_CONNECTION_STRING");
+        if (!string.IsNullOrWhiteSpace(envConn))
+            return envConn;
+
+        // 2. Check local untracked appsettings.json if present
+        var localConfigPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+        if (File.Exists(localConfigPath))
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllText(localConfigPath));
+            if (doc.RootElement.TryGetProperty("ConnectionStrings", out var cs) &&
+                cs.TryGetProperty("DefaultConnection", out var defaultConn) &&
+                !string.IsNullOrWhiteSpace(defaultConn.GetString()))
+            {
+                return defaultConn.GetString()!;
+            }
+        }
+
+        // 3. Secret-free template fallback (local developer sets PGPASSWORD or appsettings.json)
+        return "Host=localhost;Port=5432;Database=EquipmentBorrowingDb;Username=postgres";
+    }
+
+    private static async Task SeedDemoDataAsync(IServiceProvider services)
     {
         using var scope = services.CreateScope();
         var studentRepo = scope.ServiceProvider.GetRequiredService<IStudentRepository>();
@@ -92,19 +114,20 @@ public partial class App : Avalonia.Application
         var existingStudents = await studentRepo.GetAllAsync();
         if (!existingStudents.Any())
         {
-            await studentRepo.AddAsync(new Student(1, "Claire", true));
-            await studentRepo.AddAsync(new Student(2, "Jasper", true));
-            await studentRepo.AddAsync(new Student(3, "Mancawan", true));
-            await studentRepo.AddAsync(new Student(4, "Jack", false));
+            await studentRepo.AddAsync(new Student(0, "2024-0001", "Claire", "claire@cmu.edu.ph", true));
+            await studentRepo.AddAsync(new Student(0, "2024-0002", "Jasper", "jasper@cmu.edu.ph", true));
+            await studentRepo.AddAsync(new Student(0, "2024-0003", "Mancawan", null, true));
+            await studentRepo.AddAsync(new Student(0, "2024-0004", "Jack", null, false)); // Restricted for testing
         }
 
         var existingEquipment = await equipmentRepo.GetAllAsync();
         if (!existingEquipment.Any())
         {
-            await equipmentRepo.AddAsync(new Equipment(1, "Laptop"));
-            await equipmentRepo.AddAsync(new Equipment(2, "Projector"));
-            await equipmentRepo.AddAsync(new Equipment(3, "HDMI Cable"));
-            await equipmentRepo.AddAsync(new Equipment(4, "DSLR Camera"));
-            await equipmentRepo.AddAsync(new Equipment(5, "Tripod"));
+            await equipmentRepo.AddAsync(new Equipment(0, "EQ-1001", "Laptop", "Dell Latitude 14-inch"));
+            await equipmentRepo.AddAsync(new Equipment(0, "EQ-1002", "Projector", "Epson HDMI Portable Projector"));
+            await equipmentRepo.AddAsync(new Equipment(0, "EQ-1003", "HDMI Cable", "2-meter braided HDMI 2.1"));
+            await equipmentRepo.AddAsync(new Equipment(0, "EQ-1004", "DSLR Camera", "Canon EOS with 18-55mm lens"));
+            await equipmentRepo.AddAsync(new Equipment(0, "EQ-1005", "Tripod", "Heavy-duty aluminum tripod"));
         }
-    }*/
+    }
+}

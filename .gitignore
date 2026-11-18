@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 # Local PostgreSQL credentials
 EquipmentBorrowing.Infrastructure/Data/BorrowingDbContextFactory.cs
+/EquipmentBorrowing.Desktop/appsettings.json

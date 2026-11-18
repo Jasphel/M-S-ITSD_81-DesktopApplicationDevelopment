@@ -24,10 +24,22 @@ public class StudentRepository : IStudentRepository
                 cancellationToken);
     }
 
+    public async Task<Student?> GetByStudentNumberAsync(
+        string studentNumber,
+        CancellationToken cancellationToken = default)
+    {
+        var normalized = Student.NormalizeNumber(studentNumber);
+        return await _context.Students
+            .FirstOrDefaultAsync(
+                student => student.StudentNumber == normalized,
+                cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Student>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
         return await _context.Students
+            .OrderBy(student => student.Name)
             .ToListAsync(cancellationToken);
     }
 
@@ -37,5 +49,17 @@ public class StudentRepository : IStudentRepository
     {
         await _context.Students.AddAsync(student, cancellationToken);
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task UpdateAsync(
+        Student student,
+        CancellationToken cancellationToken = default)
+    {
+        var existing = await _context.Students.FindAsync(new object[] { student.Id }, cancellationToken);
+        if (existing != null)
+        {
+            _context.Entry(existing).CurrentValues.SetValues(student);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
     }
 }

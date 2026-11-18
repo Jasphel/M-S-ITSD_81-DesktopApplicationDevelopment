@@ -1,28 +1,32 @@
 ﻿using EquipmentBorrowing.Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System.Security;
-using System.Xml.Linq;
 
 namespace EquipmentBorrowing.Infrastructure.Configurations;
 
 public class StudentConfiguration : IEntityTypeConfiguration<Student>
-    //"This class contains the database mapping rules for the Student domain class."
 {
     public void Configure(EntityTypeBuilder<Student> builder)
     {
-        builder.HasKey(student => student.Id);
-        //Id → PRIMARY KEY
+        builder.HasKey(s => s.Id);
 
-        builder.Property(student => student.Name)
+        builder.Property(s => s.StudentNumber)
+            .IsRequired()
+            .HasMaxLength(50);
+
+        // Enforce unique student number in PostgreSQL (BR-01, BR-16)
+        builder.HasIndex(s => s.StudentNumber)
+            .IsUnique();
+
+        builder.Property(s => s.Name)
             .IsRequired()
             .HasMaxLength(100);
-//        Name
-        //├── NOT NULL
-        //└── maximum 100 characters
 
-        builder.Property(student => student.IsAllowedToBorrow)
+        builder.Property(s => s.ContactInfo)
+            .IsRequired(false)
+            .HasMaxLength(150);
+
+        builder.Property(s => s.IsAllowedToBorrow)
             .IsRequired();
-        //makes the borrowing - permission value required.
     }
 }

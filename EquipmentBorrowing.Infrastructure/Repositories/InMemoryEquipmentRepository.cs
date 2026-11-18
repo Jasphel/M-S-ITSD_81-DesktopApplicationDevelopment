@@ -7,32 +7,31 @@ public class InMemoryEquipmentRepository : IEquipmentRepository
 {
     private readonly List<Equipment> _equipment = new();
 
-    public Task<Equipment?> GetByIdAsync(
-        int id,
-        CancellationToken cancellationToken = default)
-    {
-        var equipment = _equipment.FirstOrDefault(
-            equipment => equipment.Id == id);
+    public void Add(Equipment equipment) => _equipment.Add(equipment);
 
-        return Task.FromResult(equipment);
+    public Task<Equipment?> GetByIdAsync(int id, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_equipment.FirstOrDefault(e => e.Id == id));
+
+    public Task<Equipment?> GetByIdentifierAsync(string identifier, CancellationToken cancellationToken = default)
+    {
+        var normalized = Equipment.NormalizeIdentifier(identifier);
+        return Task.FromResult(_equipment.FirstOrDefault(e => e.Identifier == normalized));
     }
 
-    public Task<IReadOnlyList<Equipment>> GetAllAsync(
-        CancellationToken cancellationToken = default)
-    {
-        return Task.FromResult<IReadOnlyList<Equipment>>(_equipment.ToList());
-    }
+    public Task<IReadOnlyList<Equipment>> GetAllAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Equipment>>(_equipment.ToList());
 
-    public void Add(Equipment equipment)
+    public Task AddAsync(Equipment equipment, CancellationToken cancellationToken = default)
     {
         _equipment.Add(equipment);
+        return Task.CompletedTask;
     }
 
-    public Task UpdateAsync(
-    Equipment equipment,
-    CancellationToken cancellationToken = default)
+    public Task UpdateAsync(Equipment equipment, CancellationToken cancellationToken = default)
     {
-        // In-memory object is already updated by reference
+        var index = _equipment.FindIndex(e => e.Id == equipment.Id);
+        if (index >= 0)
+            _equipment[index] = equipment;
         return Task.CompletedTask;
     }
 }

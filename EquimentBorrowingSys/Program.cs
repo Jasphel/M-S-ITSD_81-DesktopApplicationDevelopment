@@ -7,18 +7,18 @@ var studentRepository = new InMemoryStudentRepository();
 var equipmentRepository = new InMemoryEquipmentRepository();
 var borrowingRepository = new InMemoryBorrowingRepository();
 
-// Seed Students
-studentRepository.Add(new Student(1, "Shekinah", true));
-studentRepository.Add(new Student(2, "Leila", true));
-studentRepository.Add(new Student(3, "Fluffy", true));
-studentRepository.Add(new Student(4, "Rajah", false)); // not allowed to borrow, for testing
+// Seed Students (id, studentNumber, name, contactInfo, isAllowedToBorrow)
+studentRepository.Add(new Student(1, "STU-001", "Shekinah", null, true));
+studentRepository.Add(new Student(2, "STU-002", "Leila", null, true));
+studentRepository.Add(new Student(3, "STU-003", "Fluffy", null, true));
+studentRepository.Add(new Student(4, "STU-004", "Rajah", null, false)); // not allowed to borrow, for testing
 
-// Seed Equipment
-equipmentRepository.Add(new Equipment(1, "Laptop"));
-equipmentRepository.Add(new Equipment(2, "Projector"));
-equipmentRepository.Add(new Equipment(3, "HDMI Cable"));
-equipmentRepository.Add(new Equipment(4, "Keyboard"));
-equipmentRepository.Add(new Equipment(5, "Tripod"));
+// Seed Equipment (id, identifier, name, description, isAvailable)
+equipmentRepository.Add(new Equipment(1, "EQP-001", "Laptop"));
+equipmentRepository.Add(new Equipment(2, "EQP-002", "Projector"));
+equipmentRepository.Add(new Equipment(3, "EQP-003", "HDMI Cable"));
+equipmentRepository.Add(new Equipment(4, "EQP-004", "Keyboard"));
+equipmentRepository.Add(new Equipment(5, "EQP-005", "Tripod"));
 
 var borrowEquipmentService = new BorrowEquipmentService(
     studentRepository,
