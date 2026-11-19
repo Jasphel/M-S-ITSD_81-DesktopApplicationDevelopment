@@ -62,4 +62,15 @@ public class InMemoryBorrowingRepository : IBorrowingRepository
 
         return Task.CompletedTask;
     }
+
+    public Task<IReadOnlyList<Borrowing>> GetByStudentIdAsync(
+        int studentId,
+        CancellationToken cancellationToken = default)
+    {
+        var history = _borrowings
+            .Where(b => b.StudentId == studentId)
+            .OrderByDescending(b => b.Id)
+            .ToList();
+        return Task.FromResult<IReadOnlyList<Borrowing>>(history);
+    }
 }

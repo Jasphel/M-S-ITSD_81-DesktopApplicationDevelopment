@@ -18,6 +18,12 @@
     <DataTemplate DataType="{x:Type vm:BorrowingsViewModel}">
       <views:BorrowingsView />
     </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:StudentManagementViewModel}">
+      <views:StudentManagementView />
+    </DataTemplate>
+    <DataTemplate DataType="{x:Type vm:EquipmentManagementViewModel}">
+      <views:EquipmentManagementView />
+    </DataTemplate>
   </Application.DataTemplates>
 
   <Application.Styles>

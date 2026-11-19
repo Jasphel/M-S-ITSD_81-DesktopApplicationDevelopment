@@ -1,0 +1,77 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:EquipmentBorrowing.Desktop.ViewModels"
+             xmlns:domain="using:EquipmentBorrowing.Domain"
+             x:Class="EquipmentBorrowing.Desktop.Views.StudentManagementView"
+             x:DataType="vm:StudentManagementViewModel">
+
+  <Grid ColumnDefinitions="*,380" Margin="16">
+    <!-- Student List & History -->
+    <Grid Grid.Column="0" RowDefinitions="*,Auto">
+      <ListBox Grid.Row="0"
+               ItemsSource="{Binding Students}"
+               SelectedItem="{Binding SelectedStudent}"
+               Margin="0,0,16,0">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="domain:Student">
+            <Border Classes="listRow">
+              <Grid ColumnDefinitions="60,*,120,80">
+                <TextBlock Grid.Column="0" Text="{Binding Id}" />
+                <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" />
+                <TextBlock Grid.Column="2" Text="{Binding StudentNumber}" Foreground="#6B7280" />
+                <TextBlock Grid.Column="3" Text="{Binding IsAllowedToBorrow}" Foreground="#15803D" />
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <!-- History for selected student -->
+      <Border Grid.Row="1" Classes="panel" Margin="0,16,16,0" MaxHeight="180">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Selected Student Borrowing History (UC-14)" Classes="sectionHeading" />
+          <ListBox ItemsSource="{Binding SelectedStudentHistory}" MaxHeight="110">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:StudentHistoryItem">
+                <Grid ColumnDefinitions="*,100,100,80" Margin="0,2">
+                  <TextBlock Grid.Column="0" Text="{Binding EquipmentLabel}" />
+                  <TextBlock Grid.Column="1" Text="{Binding DateBorrowedText}" Foreground="#6B7280" FontSize="11" />
+                  <TextBlock Grid.Column="2" Text="{Binding ActualReturnText}" Foreground="#6B7280" FontSize="11" />
+                  <TextBlock Grid.Column="3" Text="{Binding StatusText}" FontWeight="SemiBold" FontSize="11" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </StackPanel>
+      </Border>
+    </Grid>
+
+    <!-- Student Registration / Edit Form -->
+    <Border Grid.Column="1" Classes="panel">
+      <StackPanel Spacing="10">
+        <TextBlock Text="{Binding FormHeader}" Classes="sectionHeading" />
+
+        <TextBlock Text="Student Number" Classes="fieldLabel" />
+        <TextBox Text="{Binding StudentNumberInput}" Watermark="e.g. 2024-0001" />
+
+        <TextBlock Text="Full Name" Classes="fieldLabel" />
+        <TextBox Text="{Binding NameInput}" Watermark="e.g. Juan Dela Cruz" />
+
+        <TextBlock Text="Contact Info (Optional)" Classes="fieldLabel" />
+        <TextBox Text="{Binding ContactInfoInput}" Watermark="Email or phone" />
+
+        <CheckBox Content="Allowed to Borrow" IsChecked="{Binding IsAllowedToBorrowInput}" Margin="0,4,0,4" />
+
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="{Binding SaveButtonText}"
+                  Classes="primaryButton"
+                  Command="{Binding SaveStudentCommand}" />
+          <Button Content="New"
+                  Command="{Binding StartNewStudentCommand}" />
+        </StackPanel>
+
+        <TextBlock Text="{Binding StatusMessage}" Classes="statusMessage" TextWrapping="Wrap" />
+      </StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

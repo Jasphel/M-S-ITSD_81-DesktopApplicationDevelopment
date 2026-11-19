@@ -3,33 +3,28 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
-/// <summary>
-/// This is the only ViewModel that knows both other ViewModels exist.
-/// It doesn't contain any borrowing logic itself — it just decides
-/// *which* screen is currently visible, and makes sure that screen's
-/// data is fresh before showing it. That last part matters: a return
-/// completed on the Borrowings screen changes equipment availability,
-/// so Equipment needs to reload the next time someone switches to it,
-/// and vice versa.
-/// </summary>
 public partial class MainWindowViewModel : ViewModelBase
 {
     private readonly EquipmentViewModel _equipmentViewModel;
     private readonly BorrowingsViewModel _borrowingsViewModel;
+    private readonly StudentManagementViewModel _studentManagementViewModel;
+    private readonly EquipmentManagementViewModel _equipmentManagementViewModel;
 
     [ObservableProperty]
     private ViewModelBase currentViewModel;
 
     public MainWindowViewModel(
         EquipmentViewModel equipmentViewModel,
-        BorrowingsViewModel borrowingsViewModel)
+        BorrowingsViewModel borrowingsViewModel,
+        StudentManagementViewModel studentManagementViewModel,
+        EquipmentManagementViewModel equipmentManagementViewModel)
     {
         _equipmentViewModel = equipmentViewModel;
         _borrowingsViewModel = borrowingsViewModel;
+        _studentManagementViewModel = studentManagementViewModel;
+        _equipmentManagementViewModel = equipmentManagementViewModel;
 
         currentViewModel = _equipmentViewModel;
-
-        // Fire the initial load without blocking the constructor.
         _ = ShowEquipmentCommand.ExecuteAsync(null);
     }
 
@@ -45,5 +40,19 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         await _borrowingsViewModel.LoadAsync();
         CurrentViewModel = _borrowingsViewModel;
+    }
+
+    [RelayCommand]
+    private async Task ShowStudents()
+    {
+        await _studentManagementViewModel.LoadAsync();
+        CurrentViewModel = _studentManagementViewModel;
+    }
+
+    [RelayCommand]
+    private async Task ShowEquipmentManagement()
+    {
+        await _equipmentManagementViewModel.LoadAsync();
+        CurrentViewModel = _equipmentManagementViewModel;
     }
 }

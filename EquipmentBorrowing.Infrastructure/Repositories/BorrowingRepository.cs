@@ -76,4 +76,13 @@ public class BorrowingRepository : IBorrowingRepository
             await _context.SaveChangesAsync(cancellationToken);
         }
     }
+    public async Task<IReadOnlyList<Borrowing>> GetByStudentIdAsync(
+           int studentId,
+           CancellationToken cancellationToken = default)
+    {
+        return await _context.Borrowings
+            .Where(b => b.StudentId == studentId)
+            .OrderByDescending(b => b.Id)
+            .ToListAsync(cancellationToken);
+    }
 }

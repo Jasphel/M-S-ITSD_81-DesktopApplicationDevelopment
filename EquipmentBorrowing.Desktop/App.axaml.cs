@@ -75,10 +75,18 @@ public partial class App : Avalonia.Application
         services.AddTransient<BorrowEquipmentService>();
         services.AddTransient<ReturnEquipmentService>();
 
+        // Application Services
+        services.AddTransient<BorrowEquipmentService>();
+        services.AddTransient<ReturnEquipmentService>();
+        services.AddTransient<StudentManagementService>();
+        services.AddTransient<EquipmentManagementService>();
+
         // ViewModels
         services.AddTransient<MainWindowViewModel>();
         services.AddTransient<EquipmentViewModel>();
         services.AddTransient<BorrowingsViewModel>();
+        services.AddTransient<StudentManagementViewModel>();
+        services.AddTransient<EquipmentManagementViewModel>();
     }
 
     private static string ResolveConnectionString()

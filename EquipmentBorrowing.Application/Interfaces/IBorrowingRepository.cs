@@ -31,4 +31,8 @@ public interface IBorrowingRepository
     Task UpdateAsync(
         Borrowing borrowing,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<Borrowing>> GetByStudentIdAsync(
+        int studentId,
+        CancellationToken cancellationToken = default);
 }
