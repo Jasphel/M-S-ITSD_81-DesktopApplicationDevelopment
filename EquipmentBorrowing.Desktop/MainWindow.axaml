@@ -22,6 +22,9 @@
 				<Button Content="Active Borrowings"
 						Classes="navButton"
 						Command="{Binding ShowBorrowingsCommand}" />
+				<Button Content="Search Borrowings"
+						Classes="navButton"
+						Command="{Binding ShowSearchCommand}" />
 				<Button Content="Students"
 						Classes="navButton"
 						Command="{Binding ShowStudentsCommand}" />

@@ -62,6 +62,7 @@ public partial class App : Avalonia.Application
         services.AddTransient<IStudentRepository, StudentRepository>();
         services.AddTransient<IEquipmentRepository, EquipmentRepository>();
         services.AddTransient<IBorrowingRepository, BorrowingRepository>();
+        services.AddTransient<IBorrowingQueryRepository, BorrowingQueryRepository>();
 
         // One short-lived context + one PostgreSQL transaction per business operation
         // (issue / return / multi-item checkout). Uses the singleton DbContextOptions above.
@@ -72,6 +73,8 @@ public partial class App : Avalonia.Application
         services.AddTransient<ReturnEquipmentService>();
         services.AddTransient<StudentManagementService>();
         services.AddTransient<EquipmentManagementService>();
+        services.AddTransient<CheckoutMultipleEquipmentService>();
+        services.AddTransient<BorrowingQueryService>();
 
         // ViewModels
         services.AddTransient<MainWindowViewModel>();
@@ -79,6 +82,7 @@ public partial class App : Avalonia.Application
         services.AddTransient<BorrowingsViewModel>();
         services.AddTransient<StudentManagementViewModel>();
         services.AddTransient<EquipmentManagementViewModel>();
+        services.AddTransient<BorrowingSearchViewModel>();
     }
 
     private static string ResolveConnectionString()

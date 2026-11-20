@@ -9,6 +9,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly BorrowingsViewModel _borrowingsViewModel;
     private readonly StudentManagementViewModel _studentManagementViewModel;
     private readonly EquipmentManagementViewModel _equipmentManagementViewModel;
+    private readonly BorrowingSearchViewModel _borrowingSearchViewModel;
 
     [ObservableProperty]
     private ViewModelBase currentViewModel;
@@ -20,12 +21,14 @@ public partial class MainWindowViewModel : ViewModelBase
         EquipmentViewModel equipmentViewModel,
         BorrowingsViewModel borrowingsViewModel,
         StudentManagementViewModel studentManagementViewModel,
-        EquipmentManagementViewModel equipmentManagementViewModel)
+        EquipmentManagementViewModel equipmentManagementViewModel,
+        BorrowingSearchViewModel borrowingSearchViewModel)
     {
         _equipmentViewModel = equipmentViewModel;
         _borrowingsViewModel = borrowingsViewModel;
         _studentManagementViewModel = studentManagementViewModel;
         _equipmentManagementViewModel = equipmentManagementViewModel;
+        _borrowingSearchViewModel = borrowingSearchViewModel;
 
         currentViewModel = _equipmentViewModel;
     }
@@ -76,5 +79,12 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         await _equipmentManagementViewModel.LoadAsync();
         CurrentViewModel = _equipmentManagementViewModel;
+    }
+
+    [RelayCommand]
+    private async Task ShowSearch()
+    {
+        await _borrowingSearchViewModel.LoadAsync();
+        CurrentViewModel = _borrowingSearchViewModel;
     }
 }

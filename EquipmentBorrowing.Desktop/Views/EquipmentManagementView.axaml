@@ -6,8 +6,8 @@
              x:DataType="vm:EquipmentManagementViewModel">
 
   <Grid ColumnDefinitions="*,380" Margin="16">
-    <!-- Equipment List -->
-    <Grid Grid.Column="0" RowDefinitions="Auto,*">
+    <!-- Equipment List & History -->
+    <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto">
       <StackPanel Grid.Row="0">
       <Border Classes="errorBanner" IsVisible="{Binding HasError}">
         <Grid ColumnDefinitions="*,Auto">
@@ -43,6 +43,35 @@
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
+
+      <!-- History for the selected item (UC-08) -->
+      <Border Grid.Row="2" Classes="panel" Margin="0,16,16,0" MaxHeight="230">
+        <StackPanel Spacing="6">
+          <TextBlock Text="Selected Equipment Borrowing History (UC-08)" Classes="sectionHeading" />
+          <TextBlock Text="Loading history…" Classes="infoText" IsVisible="{Binding IsHistoryBusy}" />
+          <TextBlock Text="{Binding HistoryError}" Foreground="#7F1D1D" TextWrapping="Wrap"
+                     IsVisible="{Binding HistoryError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          <TextBlock Text="This item has no borrowing history." Classes="infoText" IsVisible="{Binding ShowHistoryEmpty}" />
+          <Grid ColumnDefinitions="*,90,90,70">
+            <TextBlock Grid.Column="0" Text="Borrowed by" Classes="fieldLabel" />
+            <TextBlock Grid.Column="1" Text="Borrowed" Classes="fieldLabel" />
+            <TextBlock Grid.Column="2" Text="Returned" Classes="fieldLabel" />
+            <TextBlock Grid.Column="3" Text="Status" Classes="fieldLabel" />
+          </Grid>
+          <ListBox ItemsSource="{Binding SelectedEquipmentHistory}" MaxHeight="120">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:BorrowingRowItem">
+                <Grid ColumnDefinitions="*,90,90,70" Margin="0,2">
+                  <TextBlock Grid.Column="0" Text="{Binding StudentText}" />
+                  <TextBlock Grid.Column="1" Text="{Binding BorrowedText}" Classes="muted" FontSize="12" />
+                  <TextBlock Grid.Column="2" Text="{Binding ReturnedText}" Classes="muted" FontSize="12" />
+                  <TextBlock Grid.Column="3" Text="{Binding StatusText}" FontWeight="SemiBold" FontSize="12" />
+                </Grid>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </StackPanel>
+      </Border>
     </Grid>
 
     <!-- Add / Edit Equipment Form (UC-15, UC-16) -->

@@ -11,8 +11,10 @@ public partial class EquipmentManagementViewModel : ViewModelBase
 {
     private readonly IEquipmentRepository _equipmentRepository;
     private readonly EquipmentManagementService _equipmentService;
+    private readonly BorrowingQueryService _queryService;
 
     public ObservableCollection<Equipment> EquipmentList { get; } = new();
+    public ObservableCollection<BorrowingRowItem> SelectedEquipmentHistory { get; } = new();
 
     [ObservableProperty]
     private Equipment? selectedEquipment;
@@ -41,12 +43,24 @@ public partial class EquipmentManagementViewModel : ViewModelBase
     [ObservableProperty]
     private bool showEmptyState;
 
+    // Selected-item history (UC-08) has its own loading / error / empty state (BR-19).
+    [ObservableProperty]
+    private bool isHistoryBusy;
+
+    [ObservableProperty]
+    private string? historyError;
+
+    [ObservableProperty]
+    private bool showHistoryEmpty;
+
     public EquipmentManagementViewModel(
         IEquipmentRepository equipmentRepository,
-        EquipmentManagementService equipmentService)
+        EquipmentManagementService equipmentService,
+        BorrowingQueryService queryService)
     {
         _equipmentRepository = equipmentRepository;
         _equipmentService = equipmentService;
+        _queryService = queryService;
     }
 
     [RelayCommand]
@@ -82,6 +96,9 @@ public partial class EquipmentManagementViewModel : ViewModelBase
         if (value is null)
         {
             PrepareNewEquipmentForm();
+            SelectedEquipmentHistory.Clear();
+            HistoryError = null;
+            ShowHistoryEmpty = false;
             return;
         }
 
@@ -94,6 +111,39 @@ public partial class EquipmentManagementViewModel : ViewModelBase
             ? "Available (managed via Borrow/Return)"
             : "Currently Borrowed (managed via Return)";
         StatusMessage = string.Empty;
+
+        _ = LoadHistoryForEquipmentAsync(value.Id);
+    }
+
+    private async Task LoadHistoryForEquipmentAsync(int equipmentId)
+    {
+        IsHistoryBusy = true;
+        HistoryError = null;
+        ShowHistoryEmpty = false;
+
+        try
+        {
+            var records = await _queryService.GetEquipmentHistoryAsync(equipmentId);
+
+            // Ignore a stale result if another item was selected while this was loading.
+            if (SelectedEquipment?.Id != equipmentId)
+                return;
+
+            SelectedEquipmentHistory.Clear();
+            foreach (var record in records)
+                SelectedEquipmentHistory.Add(BorrowingRowItem.From(record));
+
+            ShowHistoryEmpty = SelectedEquipmentHistory.Count == 0;
+        }
+        catch (Exception ex)
+        {
+            SelectedEquipmentHistory.Clear();
+            HistoryError = DescribeException(ex);
+        }
+        finally
+        {
+            IsHistoryBusy = false;
+        }
     }
 
     [RelayCommand]

@@ -1,0 +1,92 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:EquipmentBorrowing.Desktop.ViewModels"
+             x:Class="EquipmentBorrowing.Desktop.Views.BorrowingSearchView"
+             x:DataType="vm:BorrowingSearchViewModel">
+
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*" Margin="16">
+
+    <TextBlock Grid.Row="0" Text="Search Borrowings" Classes="sectionHeading" />
+
+    <!-- Search / filter / sort controls (UC-09, BR-17) -->
+    <Border Grid.Row="1" Classes="panel">
+      <StackPanel Spacing="10">
+        <TextBlock Text="Search student name, student number or equipment name" Classes="fieldLabel" />
+        <TextBox Text="{Binding SearchText}" Watermark="e.g. claire, 2024-0002, laptop">
+          <TextBox.KeyBindings>
+            <KeyBinding Gesture="Enter" Command="{Binding LoadCommand}" />
+          </TextBox.KeyBindings>
+        </TextBox>
+
+        <StackPanel Orientation="Horizontal" Spacing="16">
+          <StackPanel Spacing="2">
+            <TextBlock Text="Status" Classes="fieldLabel" />
+            <ComboBox SelectedIndex="{Binding StatusIndex}" Width="130">
+              <ComboBoxItem Content="All" />
+              <ComboBoxItem Content="Active" />
+              <ComboBoxItem Content="Returned" />
+            </ComboBox>
+          </StackPanel>
+          <StackPanel Spacing="2">
+            <TextBlock Text="Sort by" Classes="fieldLabel" />
+            <ComboBox SelectedIndex="{Binding SortFieldIndex}" Width="180">
+              <ComboBoxItem Content="Checkout date" />
+              <ComboBoxItem Content="Expected return date" />
+            </ComboBox>
+          </StackPanel>
+          <StackPanel Spacing="2">
+            <TextBlock Text="Direction" Classes="fieldLabel" />
+            <ComboBox SelectedIndex="{Binding SortDirectionIndex}" Width="140">
+              <ComboBoxItem Content="Descending" />
+              <ComboBoxItem Content="Ascending" />
+            </ComboBox>
+          </StackPanel>
+        </StackPanel>
+
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="Search" Classes="primaryButton" Command="{Binding LoadCommand}" />
+          <Button Content="Reset" Command="{Binding ResetCommand}" />
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <StackPanel Grid.Row="2" Margin="0,10,0,0">
+      <Border Classes="errorBanner" IsVisible="{Binding HasError}">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Content="Retry" Command="{Binding LoadCommand}" Margin="12,0,0,0" />
+        </Grid>
+      </Border>
+      <TextBlock Text="Loading…" Classes="infoText" IsVisible="{Binding IsBusy}" />
+      <TextBlock Text="No borrowings match your search." Classes="infoText" IsVisible="{Binding ShowEmptyState}" />
+      <TextBlock Text="{Binding ResultSummary}" Classes="infoText" />
+    </StackPanel>
+
+    <Grid Grid.Row="3" ColumnDefinitions="*,*,90,90,90,80" Margin="10,0,10,2">
+      <TextBlock Grid.Column="0" Text="Student" Classes="fieldLabel" />
+      <TextBlock Grid.Column="1" Text="Equipment" Classes="fieldLabel" />
+      <TextBlock Grid.Column="2" Text="Checked out" Classes="fieldLabel" />
+      <TextBlock Grid.Column="3" Text="Due" Classes="fieldLabel" />
+      <TextBlock Grid.Column="4" Text="Returned" Classes="fieldLabel" />
+      <TextBlock Grid.Column="5" Text="Status" Classes="fieldLabel" />
+    </Grid>
+
+    <ListBox Grid.Row="4" ItemsSource="{Binding Results}">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:BorrowingRowItem">
+          <Border Classes="listRow">
+            <Grid ColumnDefinitions="*,*,90,90,90,80">
+              <TextBlock Grid.Column="0" Text="{Binding StudentText}" TextWrapping="Wrap" />
+              <TextBlock Grid.Column="1" Text="{Binding EquipmentText}" TextWrapping="Wrap" />
+              <TextBlock Grid.Column="2" Text="{Binding BorrowedText}" Classes="muted" />
+              <TextBlock Grid.Column="3" Text="{Binding DueText}" Classes="muted" />
+              <TextBlock Grid.Column="4" Text="{Binding ReturnedText}" Classes="muted" />
+              <TextBlock Grid.Column="5" Text="{Binding StatusText}" FontWeight="SemiBold" />
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+  </Grid>
+</UserControl>

@@ -5,13 +5,18 @@
              x:Class="EquipmentBorrowing.Desktop.Views.EquipmentView"
              x:DataType="vm:EquipmentViewModel">
 
-  <Grid ColumnDefinitions="*,320" Margin="16">
+  <Grid ColumnDefinitions="*,330" Margin="16">
 
-    <!-- Equipment list (UC-01) -->
-    <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*">
+    <!-- Equipment catalog (UC-01) with "available only" filter (UC-02) -->
+    <Grid Grid.Column="0" RowDefinitions="Auto,Auto,Auto,*">
       <TextBlock Grid.Row="0" Text="Equipment" Classes="sectionHeading" />
 
-      <StackPanel Grid.Row="1">
+      <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12" Margin="0,0,0,8">
+        <CheckBox Content="Show available only" IsChecked="{Binding ShowOnlyAvailable}" />
+        <Button Content="Refresh" Command="{Binding LoadCommand}" />
+      </StackPanel>
+
+      <StackPanel Grid.Row="2">
       <Border Classes="errorBanner" IsVisible="{Binding HasError}">
         <Grid ColumnDefinitions="*,Auto">
           <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
@@ -19,25 +24,29 @@
         </Grid>
       </Border>
       <TextBlock Text="Loading…" Classes="infoText" IsVisible="{Binding IsBusy}" />
-      <TextBlock Text="No equipment has been registered yet." Classes="infoText" IsVisible="{Binding ShowEmptyState}" />
+      <TextBlock Text="{Binding EmptyMessage}" Classes="infoText" IsVisible="{Binding ShowEmptyState}" />
       </StackPanel>
 
-      <ListBox Grid.Row="2"
-               ItemsSource="{Binding EquipmentList}"
-               SelectedItem="{Binding SelectedEquipment}">
+      <ListBox Grid.Row="3" ItemsSource="{Binding EquipmentList}">
         <ListBox.ItemTemplate>
-          <DataTemplate x:DataType="domain:Equipment">
+          <DataTemplate x:DataType="vm:SelectableEquipment">
             <Border Classes="listRow">
-              <Grid ColumnDefinitions="50,*,110">
-                <TextBlock Grid.Column="0" Text="{Binding Id}" />
-                <TextBlock Grid.Column="1" Text="{Binding Name}" />
-                <TextBlock Grid.Column="2"
+              <Grid ColumnDefinitions="Auto,90,*,100">
+                <CheckBox Grid.Column="0"
+                          IsChecked="{Binding IsChecked}"
+                          MinWidth="0"
+                          Margin="0,0,8,0" />
+                <TextBlock Grid.Column="1" Text="{Binding Identifier}" Classes="muted" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="2" Text="{Binding Name}" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="3"
                            Text="Available"
                            Classes="badge badgeAvailable"
+                           VerticalAlignment="Center"
                            IsVisible="{Binding IsAvailable}" />
-                <TextBlock Grid.Column="2"
+                <TextBlock Grid.Column="3"
                            Text="Borrowed"
                            Classes="badge badgeUnavailable"
+                           VerticalAlignment="Center"
                            IsVisible="{Binding !IsAvailable}" />
               </Grid>
             </Border>
@@ -46,10 +55,12 @@
       </ListBox>
     </Grid>
 
-    <!-- Borrow form (UC-03) -->
+    <!-- Borrow / checkout form (UC-03, UC-06) -->
     <Border Grid.Column="1" Classes="panel" Margin="16,0,0,0">
       <StackPanel Spacing="10">
-        <TextBlock Text="Borrow Equipment" Classes="sectionHeading" />
+        <TextBlock Text="Borrow / Check Out" Classes="sectionHeading" />
+        <TextBlock Text="Tick one item to borrow it, or two or more to check them out together (a student may hold at most 3 active items)."
+                   Classes="fieldLabel" TextWrapping="Wrap" />
 
         <TextBlock Text="Student" Classes="fieldLabel" />
         <ComboBox ItemsSource="{Binding Students}"
@@ -63,13 +74,13 @@
         </ComboBox>
 
         <TextBlock Text="Selected Equipment" Classes="fieldLabel" />
-        <TextBlock Text="{Binding SelectedEquipment.Name, TargetNullValue='(none selected)'}" />
+        <TextBlock Text="{Binding SelectionSummary}" TextWrapping="Wrap" />
 
         <TextBlock Text="Expected Return Date" Classes="fieldLabel" />
         <DatePicker SelectedDate="{Binding ExpectedReturnDate}"
                     HorizontalAlignment="Stretch" />
 
-        <Button Content="Borrow Equipment"
+        <Button Content="Borrow Selected"
                 Classes="primaryButton"
                 Command="{Binding BorrowCommand}"
                 HorizontalAlignment="Stretch" />
