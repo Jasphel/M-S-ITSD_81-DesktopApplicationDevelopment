@@ -4,8 +4,8 @@
         x:Class="EquipmentBorrowing.Desktop.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Title="Campus Equipment Borrowing System"
-        Width="900" Height="600"
-        MinWidth="720" MinHeight="480">
+        Width="1000" Height="640"
+        MinWidth="820" MinHeight="520">
 
 	<Grid RowDefinitions="Auto,*">
 
@@ -32,7 +32,15 @@
 
 			<!-- Current view -->
 			<Border Grid.Column="1" Classes="contentArea">
-				<ContentControl Content="{Binding CurrentViewModel}" />
+				<Grid>
+					<TextBlock Text="Starting up: connecting to the database…"
+							   Classes="infoText"
+							   HorizontalAlignment="Center"
+							   VerticalAlignment="Center"
+							   IsVisible="{Binding IsStarting}" />
+					<ContentControl Content="{Binding CurrentViewModel}"
+									IsVisible="{Binding !IsStarting}" />
+				</Grid>
 			</Border>
 		</Grid>
 

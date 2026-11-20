@@ -1,4 +1,4 @@
-﻿using EquipmentBorrowing.Application.Interfaces;
+using EquipmentBorrowing.Application.Interfaces;
 using EquipmentBorrowing.Domain;
 using EquipmentBorrowing.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +19,7 @@ public class EquipmentRepository : IEquipmentRepository
         CancellationToken cancellationToken = default)
     {
         return await _context.Equipment
+            .AsNoTracking()
             .FirstOrDefaultAsync(
                 equipment => equipment.Id == id,
                 cancellationToken);
@@ -30,6 +31,7 @@ public class EquipmentRepository : IEquipmentRepository
     {
         var normalized = Equipment.NormalizeIdentifier(identifier);
         return await _context.Equipment
+            .AsNoTracking()
             .FirstOrDefaultAsync(
                 equipment => equipment.Identifier == normalized,
                 cancellationToken);
@@ -39,6 +41,7 @@ public class EquipmentRepository : IEquipmentRepository
         CancellationToken cancellationToken = default)
     {
         return await _context.Equipment
+            .AsNoTracking()
             .OrderBy(equipment => equipment.Name)
             .ToListAsync(cancellationToken);
     }
@@ -48,18 +51,16 @@ public class EquipmentRepository : IEquipmentRepository
         CancellationToken cancellationToken = default)
     {
         await _context.Equipment.AddAsync(equipment, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
+        await DbSaveHelper.SaveAsync(_context, cancellationToken);
     }
 
     public async Task UpdateAsync(
         Equipment equipment,
         CancellationToken cancellationToken = default)
     {
-        var existing = await _context.Equipment.FindAsync(new object[] { equipment.Id }, cancellationToken);
-        if (existing != null)
-        {
-            _context.Entry(existing).CurrentValues.SetValues(equipment);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
+        // Reads are untracked, so re-attach the edited entity and write it (last write wins).
+        // A row that no longer exists surfaces as a DataConflictException.
+        _context.Equipment.Update(equipment);
+        await DbSaveHelper.SaveAsync(_context, cancellationToken);
     }
 }

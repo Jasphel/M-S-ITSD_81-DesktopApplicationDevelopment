@@ -5,7 +5,10 @@ public enum ReturnFailureReason
     None,
     BorrowingNotFound,
     AlreadyReturned,
-    EquipmentNotFound
+    EquipmentNotFound,
+    Conflict,
+    PersistenceFailed,
+    OutcomeUnknown
 }
 
 public class ReturnResult

@@ -7,37 +7,64 @@
 
   <Grid ColumnDefinitions="*,380" Margin="16">
     <!-- Student List & History -->
-    <Grid Grid.Column="0" RowDefinitions="*,Auto">
-      <ListBox Grid.Row="0"
+    <Grid Grid.Column="0" RowDefinitions="Auto,*,Auto">
+
+      <StackPanel Grid.Row="0">
+      <Border Classes="errorBanner" IsVisible="{Binding HasError}">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Content="Retry" Command="{Binding LoadCommand}" Margin="12,0,0,0" />
+        </Grid>
+      </Border>
+      <TextBlock Text="Loading…" Classes="infoText" IsVisible="{Binding IsBusy}" />
+      <TextBlock Text="No students have been registered yet." Classes="infoText" IsVisible="{Binding ShowEmptyState}" />
+      </StackPanel>
+
+      <ListBox Grid.Row="1"
                ItemsSource="{Binding Students}"
                SelectedItem="{Binding SelectedStudent}"
                Margin="0,0,16,0">
         <ListBox.ItemTemplate>
           <DataTemplate x:DataType="domain:Student">
             <Border Classes="listRow">
-              <Grid ColumnDefinitions="60,*,120,80">
+              <Grid ColumnDefinitions="50,*,110,80">
                 <TextBlock Grid.Column="0" Text="{Binding Id}" />
                 <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" />
-                <TextBlock Grid.Column="2" Text="{Binding StudentNumber}" Foreground="#6B7280" />
-                <TextBlock Grid.Column="3" Text="{Binding IsAllowedToBorrow}" Foreground="#15803D" />
+                <TextBlock Grid.Column="2" Text="{Binding StudentNumber}" Classes="muted" />
+                <TextBlock Grid.Column="3" Text="Eligible"
+                           Classes="badge badgeAvailable"
+                           IsVisible="{Binding IsAllowedToBorrow}" />
+                <TextBlock Grid.Column="3" Text="Restricted"
+                           Classes="badge badgeUnavailable"
+                           IsVisible="{Binding !IsAllowedToBorrow}" />
               </Grid>
             </Border>
           </DataTemplate>
         </ListBox.ItemTemplate>
       </ListBox>
 
-      <!-- History for selected student -->
-      <Border Grid.Row="1" Classes="panel" Margin="0,16,16,0" MaxHeight="180">
+      <!-- History for selected student (UC-07) -->
+      <Border Grid.Row="2" Classes="panel" Margin="0,16,16,0" MaxHeight="220">
         <StackPanel Spacing="6">
-          <TextBlock Text="Selected Student Borrowing History (UC-14)" Classes="sectionHeading" />
+          <TextBlock Text="Selected Student Borrowing History (UC-07)" Classes="sectionHeading" />
+          <TextBlock Text="Loading history…" Classes="infoText" IsVisible="{Binding IsHistoryBusy}" />
+          <TextBlock Text="{Binding HistoryError}" Foreground="#7F1D1D" TextWrapping="Wrap"
+                     IsVisible="{Binding HistoryError, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          <TextBlock Text="This student has no borrowing history." Classes="infoText" IsVisible="{Binding ShowHistoryEmpty}" />
+          <Grid ColumnDefinitions="*,100,100,80">
+            <TextBlock Grid.Column="0" Text="Item" Classes="fieldLabel" />
+            <TextBlock Grid.Column="1" Text="Borrowed" Classes="fieldLabel" />
+            <TextBlock Grid.Column="2" Text="Returned" Classes="fieldLabel" />
+            <TextBlock Grid.Column="3" Text="Status" Classes="fieldLabel" />
+          </Grid>
           <ListBox ItemsSource="{Binding SelectedStudentHistory}" MaxHeight="110">
             <ListBox.ItemTemplate>
               <DataTemplate x:DataType="vm:StudentHistoryItem">
                 <Grid ColumnDefinitions="*,100,100,80" Margin="0,2">
                   <TextBlock Grid.Column="0" Text="{Binding EquipmentLabel}" />
-                  <TextBlock Grid.Column="1" Text="{Binding DateBorrowedText}" Foreground="#6B7280" FontSize="11" />
-                  <TextBlock Grid.Column="2" Text="{Binding ActualReturnText}" Foreground="#6B7280" FontSize="11" />
-                  <TextBlock Grid.Column="3" Text="{Binding StatusText}" FontWeight="SemiBold" FontSize="11" />
+                  <TextBlock Grid.Column="1" Text="{Binding DateBorrowedText}" Classes="muted" FontSize="12" />
+                  <TextBlock Grid.Column="2" Text="{Binding ActualReturnText}" Classes="muted" FontSize="12" />
+                  <TextBlock Grid.Column="3" Text="{Binding StatusText}" FontWeight="SemiBold" FontSize="12" />
                 </Grid>
               </DataTemplate>
             </ListBox.ItemTemplate>
@@ -46,7 +73,7 @@
       </Border>
     </Grid>
 
-    <!-- Student Registration / Edit Form -->
+    <!-- Student Registration / Edit Form (UC-12, UC-13, UC-14) -->
     <Border Grid.Column="1" Classes="panel">
       <StackPanel Spacing="10">
         <TextBlock Text="{Binding FormHeader}" Classes="sectionHeading" />

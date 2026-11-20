@@ -7,32 +7,45 @@
 
   <Grid ColumnDefinitions="*,380" Margin="16">
     <!-- Equipment List -->
-    <ListBox Grid.Column="0"
-             ItemsSource="{Binding EquipmentList}"
-             SelectedItem="{Binding SelectedEquipment}"
-             Margin="0,0,16,0">
-      <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="domain:Equipment">
-          <Border Classes="listRow">
-            <Grid ColumnDefinitions="60,*,120,100">
-              <TextBlock Grid.Column="0" Text="{Binding Id}" />
-              <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" />
-              <TextBlock Grid.Column="2" Text="{Binding Identifier}" Foreground="#6B7280" />
-              <TextBlock Grid.Column="3"
-                         Text="Available"
-                         Classes="badge badgeAvailable"
-                         IsVisible="{Binding IsAvailable}" />
-              <TextBlock Grid.Column="3"
-                         Text="Borrowed"
-                         Classes="badge badgeUnavailable"
-                         IsVisible="{Binding !IsAvailable}" />
-            </Grid>
-          </Border>
-        </DataTemplate>
-      </ListBox.ItemTemplate>
-    </ListBox>
+    <Grid Grid.Column="0" RowDefinitions="Auto,*">
+      <StackPanel Grid.Row="0">
+      <Border Classes="errorBanner" IsVisible="{Binding HasError}">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Content="Retry" Command="{Binding LoadCommand}" Margin="12,0,0,0" />
+        </Grid>
+      </Border>
+      <TextBlock Text="Loading…" Classes="infoText" IsVisible="{Binding IsBusy}" />
+      <TextBlock Text="No equipment has been registered yet." Classes="infoText" IsVisible="{Binding ShowEmptyState}" />
+      </StackPanel>
 
-    <!-- Add / Edit Equipment Form -->
+      <ListBox Grid.Row="1"
+               ItemsSource="{Binding EquipmentList}"
+               SelectedItem="{Binding SelectedEquipment}"
+               Margin="0,0,16,0">
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="domain:Equipment">
+            <Border Classes="listRow">
+              <Grid ColumnDefinitions="50,*,110,90">
+                <TextBlock Grid.Column="0" Text="{Binding Id}" />
+                <TextBlock Grid.Column="1" Text="{Binding Name}" FontWeight="SemiBold" />
+                <TextBlock Grid.Column="2" Text="{Binding Identifier}" Classes="muted" />
+                <TextBlock Grid.Column="3"
+                           Text="Available"
+                           Classes="badge badgeAvailable"
+                           IsVisible="{Binding IsAvailable}" />
+                <TextBlock Grid.Column="3"
+                           Text="Borrowed"
+                           Classes="badge badgeUnavailable"
+                           IsVisible="{Binding !IsAvailable}" />
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+    </Grid>
+
+    <!-- Add / Edit Equipment Form (UC-15, UC-16) -->
     <Border Grid.Column="1" Classes="panel">
       <StackPanel Spacing="10">
         <TextBlock Text="{Binding FormHeader}" Classes="sectionHeading" />
@@ -46,7 +59,7 @@
         <TextBlock Text="Description (Optional)" Classes="fieldLabel" />
         <TextBox Text="{Binding DescriptionInput}" AcceptsReturn="True" Height="60" />
 
-        <TextBlock Text="{Binding AvailabilityStatusText}" Classes="fieldLabel" Foreground="#15803D" />
+        <TextBlock Text="{Binding AvailabilityStatusText}" Classes="fieldLabel" />
 
         <StackPanel Orientation="Horizontal" Spacing="8">
           <Button Content="{Binding SaveButtonText}"

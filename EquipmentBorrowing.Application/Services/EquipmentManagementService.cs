@@ -1,4 +1,5 @@
-﻿using EquipmentBorrowing.Application.Interfaces;
+using EquipmentBorrowing.Application.Exceptions;
+using EquipmentBorrowing.Application.Interfaces;
 using EquipmentBorrowing.Domain;
 
 
@@ -39,6 +40,14 @@ public class EquipmentManagementService
         {
             return OperationResult.Fail(ex.Message);
         }
+        catch (DataConflictException)
+        {
+            return OperationResult.Fail("That identifier was just taken or the record changed. Refresh and try again; nothing was saved.");
+        }
+        catch (DataAccessException)
+        {
+            return OperationResult.Fail("The change could not be saved. Nothing was changed.");
+        }
     }
 
     // UC-16: Edit Equipment Details (preserves IsAvailable status)
@@ -71,6 +80,14 @@ public class EquipmentManagementService
         catch (ArgumentException ex)
         {
             return OperationResult.Fail(ex.Message);
+        }
+        catch (DataConflictException)
+        {
+            return OperationResult.Fail("That identifier was just taken or the record changed. Refresh and try again; nothing was saved.");
+        }
+        catch (DataAccessException)
+        {
+            return OperationResult.Fail("The change could not be saved. Nothing was changed.");
         }
     }
 }

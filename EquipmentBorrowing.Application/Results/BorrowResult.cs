@@ -7,7 +7,13 @@ public enum BorrowFailureReason
     StudentNotAllowedToBorrow,
     BorrowingLimitReached,
     EquipmentNotFound,
-    EquipmentUnavailable
+    EquipmentUnavailable,
+    InvalidReturnDate,
+    NotEnoughItems,
+    DuplicateItems,
+    Conflict,
+    PersistenceFailed,
+    OutcomeUnknown
 }
 
 /// <summary>
@@ -23,15 +29,22 @@ public class BorrowResult
     public bool Succeeded { get; }
     public BorrowFailureReason FailureReason { get; }
 
-    private BorrowResult(bool succeeded, BorrowFailureReason failureReason)
+    /// <summary>
+    /// For multi-item checkout: the equipment that caused the rejection
+    /// (null when the rejection is about the student, the date or the request as a whole).
+    /// </summary>
+    public int? OffendingEquipmentId { get; }
+
+    private BorrowResult(bool succeeded, BorrowFailureReason failureReason, int? offendingEquipmentId)
     {
         Succeeded = succeeded;
         FailureReason = failureReason;
+        OffendingEquipmentId = offendingEquipmentId;
     }
 
     public static BorrowResult Success() =>
-        new(true, BorrowFailureReason.None);
+        new(true, BorrowFailureReason.None, null);
 
-    public static BorrowResult Fail(BorrowFailureReason reason) =>
-        new(false, reason);
+    public static BorrowResult Fail(BorrowFailureReason reason, int? offendingEquipmentId = null) =>
+        new(false, reason, offendingEquipmentId);
 }

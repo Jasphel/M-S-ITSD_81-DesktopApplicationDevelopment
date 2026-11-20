@@ -1,4 +1,4 @@
-﻿using EquipmentBorrowing.Application.Interfaces;
+using EquipmentBorrowing.Application.Interfaces;
 using EquipmentBorrowing.Domain;
 using EquipmentBorrowing.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +19,7 @@ public class BorrowingRepository : IBorrowingRepository
         CancellationToken cancellationToken = default)
     {
         return await _context.Borrowings
+            .AsNoTracking()
             .FirstOrDefaultAsync(
                 borrowing => borrowing.Id == id,
                 cancellationToken);
@@ -28,6 +29,7 @@ public class BorrowingRepository : IBorrowingRepository
         CancellationToken cancellationToken = default)
     {
         return await _context.Borrowings
+            .AsNoTracking()
             .Where(borrowing => borrowing.Status == BorrowingStatus.Active)
             .ToListAsync(cancellationToken);
     }
@@ -62,25 +64,24 @@ public class BorrowingRepository : IBorrowingRepository
             borrowing,
             cancellationToken);
 
-        await _context.SaveChangesAsync(cancellationToken);
+        await DbSaveHelper.SaveAsync(_context, cancellationToken);
     }
 
     public async Task UpdateAsync(
     Borrowing borrowing,
     CancellationToken cancellationToken = default)
     {
-        var existing = await _context.Borrowings.FindAsync(new object[] { borrowing.Id }, cancellationToken);
-        if (existing != null)
-        {
-            _context.Entry(existing).CurrentValues.SetValues(borrowing);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
+        // Reads are untracked, so re-attach the edited entity and write it (last write wins).
+        // A row that no longer exists surfaces as a DataConflictException.
+        _context.Borrowings.Update(borrowing);
+        await DbSaveHelper.SaveAsync(_context, cancellationToken);
     }
     public async Task<IReadOnlyList<Borrowing>> GetByStudentIdAsync(
            int studentId,
            CancellationToken cancellationToken = default)
     {
         return await _context.Borrowings
+            .AsNoTracking()
             .Where(b => b.StudentId == studentId)
             .OrderByDescending(b => b.Id)
             .ToListAsync(cancellationToken);

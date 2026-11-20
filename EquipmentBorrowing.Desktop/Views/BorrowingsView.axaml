@@ -4,14 +4,23 @@
              x:Class="EquipmentBorrowing.Desktop.Views.BorrowingsView"
              x:DataType="vm:BorrowingsViewModel">
 
-  <Grid RowDefinitions="Auto,*,Auto" Margin="16">
-	  <!-- RowGap to RowbSpacing to eventually removing it and modifying the Listbox Grid -->
+  <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="16">
 
     <TextBlock Grid.Row="0" Text="Active Borrowings" Classes="sectionHeading" />
 
-    <!-- added the margin after removing rowSpacing -->
-    <ListBox Grid.Row="1"
-             Margin="0,10,0,10"
+    <StackPanel Grid.Row="1">
+      <Border Classes="errorBanner" IsVisible="{Binding HasError}">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Content="Retry" Command="{Binding LoadCommand}" Margin="12,0,0,0" />
+        </Grid>
+      </Border>
+      <TextBlock Text="Loading…" Classes="infoText" IsVisible="{Binding IsBusy}" />
+      <TextBlock Text="There are no active borrowings." Classes="infoText" IsVisible="{Binding ShowEmptyState}" />
+    </StackPanel>
+
+    <ListBox Grid.Row="2"
+             Margin="0,6,0,10"
              ItemsSource="{Binding ActiveBorrowings}"
              SelectedItem="{Binding SelectedBorrowing}">
       <ListBox.ItemTemplate>
@@ -20,15 +29,15 @@
             <Grid ColumnDefinitions="*,*,140,140">
               <TextBlock Grid.Column="0" Text="{Binding StudentName}" />
               <TextBlock Grid.Column="1" Text="{Binding EquipmentName}" />
-              <TextBlock Grid.Column="2" Text="{Binding DateBorrowed, StringFormat='Borrowed {0:MMM d}'}" />
-              <TextBlock Grid.Column="3" Text="{Binding ExpectedReturnDate, StringFormat='Due {0:MMM d}'}" />
+              <TextBlock Grid.Column="2" Text="{Binding DateBorrowed, StringFormat='Borrowed {0:MMM d}'}" Classes="muted" />
+              <TextBlock Grid.Column="3" Text="{Binding ExpectedReturnDate, StringFormat='Due {0:MMM d}'}" Classes="muted" />
             </Grid>
           </Border>
         </DataTemplate>
       </ListBox.ItemTemplate>
     </ListBox>
 
-    <Border Grid.Row="2" Classes="panel">
+    <Border Grid.Row="3" Classes="panel">
       <StackPanel Spacing="10">
         <Button Content="Return Equipment"
                 Classes="primaryButton"

@@ -6,13 +6,23 @@
              x:DataType="vm:EquipmentViewModel">
 
   <Grid ColumnDefinitions="*,320" Margin="16">
-	  <!-- ColumnGap to ColumnSpacing to removing the whole thing-->
-	  
-	  <!-- Equipment list -->
-    <Grid Grid.Column="0" RowDefinitions="Auto,*">
+
+    <!-- Equipment list (UC-01) -->
+    <Grid Grid.Column="0" RowDefinitions="Auto,Auto,*">
       <TextBlock Grid.Row="0" Text="Equipment" Classes="sectionHeading" />
 
-      <ListBox Grid.Row="1"
+      <StackPanel Grid.Row="1">
+      <Border Classes="errorBanner" IsVisible="{Binding HasError}">
+        <Grid ColumnDefinitions="*,Auto">
+          <TextBlock Text="{Binding ErrorMessage}" TextWrapping="Wrap" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Content="Retry" Command="{Binding LoadCommand}" Margin="12,0,0,0" />
+        </Grid>
+      </Border>
+      <TextBlock Text="Loading…" Classes="infoText" IsVisible="{Binding IsBusy}" />
+      <TextBlock Text="No equipment has been registered yet." Classes="infoText" IsVisible="{Binding ShowEmptyState}" />
+      </StackPanel>
+
+      <ListBox Grid.Row="2"
                ItemsSource="{Binding EquipmentList}"
                SelectedItem="{Binding SelectedEquipment}">
         <ListBox.ItemTemplate>
@@ -36,9 +46,8 @@
       </ListBox>
     </Grid>
 
-    <!-- Borrow form -->
-	  <!-- added the margin after removing columnSpacing -->
-	  <Border Grid.Column="1" Classes="panel" Margin="16,0,0,0">
+    <!-- Borrow form (UC-03) -->
+    <Border Grid.Column="1" Classes="panel" Margin="16,0,0,0">
       <StackPanel Spacing="10">
         <TextBlock Text="Borrow Equipment" Classes="sectionHeading" />
 

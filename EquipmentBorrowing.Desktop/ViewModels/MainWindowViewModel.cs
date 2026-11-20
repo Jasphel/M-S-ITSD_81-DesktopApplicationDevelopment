@@ -13,6 +13,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private ViewModelBase currentViewModel;
 
+    [ObservableProperty]
+    private bool isStarting = true;
+
     public MainWindowViewModel(
         EquipmentViewModel equipmentViewModel,
         BorrowingsViewModel borrowingsViewModel,
@@ -25,7 +28,26 @@ public partial class MainWindowViewModel : ViewModelBase
         _equipmentManagementViewModel = equipmentManagementViewModel;
 
         currentViewModel = _equipmentViewModel;
-        _ = ShowEquipmentCommand.ExecuteAsync(null);
+    }
+
+    /// <summary>
+    /// Runs the supplied database bootstrap (migrations + safe seed) in the background, then opens the
+    /// equipment screen. A failed bootstrap is logged and never thrown: each screen reports its own
+    /// connection problem and offers Retry.
+    /// </summary>
+    public async Task StartAsync(Func<Task> initializeDatabase)
+    {
+        try
+        {
+            await initializeDatabase();
+        }
+        catch (Exception ex)
+        {
+            ErrorLog.Write(ex);
+        }
+
+        IsStarting = false;
+        await ShowEquipment();
     }
 
     [RelayCommand]

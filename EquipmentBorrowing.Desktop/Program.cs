@@ -13,6 +13,17 @@ class Program
         // FIX: Enables legacy timestamp behavior so PostgreSQL handles local DateTimes cleanly
         AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
+        // A WinExe has no console, so crashes were invisible. Record them in the error log.
+        AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+            ErrorLog.Write(e.ExceptionObject as Exception
+                           ?? new InvalidOperationException(e.ExceptionObject?.ToString()));
+
+        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            ErrorLog.Write(e.Exception);
+            e.SetObserved();
+        };
+
         BuildAvaloniaApp()
             .StartWithClassicDesktopLifetime(args);
     }

@@ -1,4 +1,4 @@
-﻿using EquipmentBorrowing.Application.Interfaces;
+using EquipmentBorrowing.Application.Interfaces;
 using EquipmentBorrowing.Domain;
 using EquipmentBorrowing.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +19,7 @@ public class StudentRepository : IStudentRepository
         CancellationToken cancellationToken = default)
     {
         return await _context.Students
+            .AsNoTracking()
             .FirstOrDefaultAsync(
                 student => student.Id == id,
                 cancellationToken);
@@ -30,6 +31,7 @@ public class StudentRepository : IStudentRepository
     {
         var normalized = Student.NormalizeNumber(studentNumber);
         return await _context.Students
+            .AsNoTracking()
             .FirstOrDefaultAsync(
                 student => student.StudentNumber == normalized,
                 cancellationToken);
@@ -39,6 +41,7 @@ public class StudentRepository : IStudentRepository
         CancellationToken cancellationToken = default)
     {
         return await _context.Students
+            .AsNoTracking()
             .OrderBy(student => student.Name)
             .ToListAsync(cancellationToken);
     }
@@ -48,18 +51,16 @@ public class StudentRepository : IStudentRepository
         CancellationToken cancellationToken = default)
     {
         await _context.Students.AddAsync(student, cancellationToken);
-        await _context.SaveChangesAsync(cancellationToken);
+        await DbSaveHelper.SaveAsync(_context, cancellationToken);
     }
 
     public async Task UpdateAsync(
         Student student,
         CancellationToken cancellationToken = default)
     {
-        var existing = await _context.Students.FindAsync(new object[] { student.Id }, cancellationToken);
-        if (existing != null)
-        {
-            _context.Entry(existing).CurrentValues.SetValues(student);
-            await _context.SaveChangesAsync(cancellationToken);
-        }
+        // Reads are untracked, so re-attach the edited entity and write it (last write wins).
+        // A row that no longer exists surfaces as a DataConflictException.
+        _context.Students.Update(student);
+        await DbSaveHelper.SaveAsync(_context, cancellationToken);
     }
 }

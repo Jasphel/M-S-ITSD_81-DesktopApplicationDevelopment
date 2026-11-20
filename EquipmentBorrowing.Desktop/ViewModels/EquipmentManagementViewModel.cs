@@ -1,5 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using Avalonia.Threading;
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EquipmentBorrowing.Application.Interfaces;
@@ -39,6 +38,9 @@ public partial class EquipmentManagementViewModel : ViewModelBase
     [ObservableProperty]
     private string statusMessage = string.Empty;
 
+    [ObservableProperty]
+    private bool showEmptyState;
+
     public EquipmentManagementViewModel(
         IEquipmentRepository equipmentRepository,
         EquipmentManagementService equipmentService)
@@ -47,18 +49,32 @@ public partial class EquipmentManagementViewModel : ViewModelBase
         _equipmentService = equipmentService;
     }
 
+    [RelayCommand]
     public async Task LoadAsync()
     {
-        var list = await _equipmentRepository.GetAllAsync();
+        IsBusy = true;
+        ErrorMessage = null;
 
-        await Dispatcher.UIThread.InvokeAsync(() =>
+        try
         {
+            var list = await _equipmentRepository.GetAllAsync();
+
             EquipmentList.Clear();
             foreach (var item in list)
                 EquipmentList.Add(item);
 
             PrepareNewEquipmentForm();
-        });
+        }
+        catch (Exception ex)
+        {
+            EquipmentList.Clear();
+            ErrorMessage = DescribeException(ex);
+        }
+        finally
+        {
+            IsBusy = false;
+            ShowEmptyState = !HasError && EquipmentList.Count == 0;
+        }
     }
 
     partial void OnSelectedEquipmentChanged(Equipment? value)
@@ -100,33 +116,42 @@ public partial class EquipmentManagementViewModel : ViewModelBase
     [RelayCommand]
     private async Task SaveEquipmentAsync()
     {
-        OperationResult result;
-        if (SelectedEquipment is null)
+        try
         {
-            // UC-15: Add Equipment
-            result = await _equipmentService.AddEquipmentAsync(
-                IdentifierInput,
-                NameInput,
-                DescriptionInput);
-        }
-        else
-        {
-            // UC-16: Edit Equipment
-            result = await _equipmentService.UpdateEquipmentAsync(
-                SelectedEquipment.Id,
-                IdentifierInput,
-                NameInput,
-                DescriptionInput);
-        }
+            OperationResult result;
+            if (SelectedEquipment is null)
+            {
+                // UC-15: Add Equipment
+                result = await _equipmentService.AddEquipmentAsync(
+                    IdentifierInput,
+                    NameInput,
+                    DescriptionInput);
+            }
+            else
+            {
+                // UC-16: Edit Equipment (availability is never edited here, BR-07)
+                result = await _equipmentService.UpdateEquipmentAsync(
+                    SelectedEquipment.Id,
+                    IdentifierInput,
+                    NameInput,
+                    DescriptionInput);
+            }
 
-        if (!result.IsSuccess)
-        {
-            StatusMessage = result.ErrorMessage ?? "Operation failed.";
-            return;
-        }
+            if (!result.IsSuccess)
+            {
+                StatusMessage = result.ErrorMessage ?? "Operation failed.";
+                return;
+            }
 
-        var savedIdentifier = Equipment.NormalizeIdentifier(IdentifierInput);
-        await LoadAsync();
-        StatusMessage = $"Equipment '{savedIdentifier}' saved successfully.";
+            var savedIdentifier = Equipment.NormalizeIdentifier(IdentifierInput);
+            await LoadAsync();
+            StatusMessage = HasError
+                ? $"Equipment '{savedIdentifier}' was saved, but the list could not be refreshed."
+                : $"Equipment '{savedIdentifier}' saved successfully.";
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = DescribeException(ex);
+        }
     }
 }

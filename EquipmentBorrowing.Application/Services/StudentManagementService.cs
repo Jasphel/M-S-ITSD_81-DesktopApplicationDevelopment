@@ -1,4 +1,5 @@
-﻿using EquipmentBorrowing.Application.Interfaces;
+using EquipmentBorrowing.Application.Exceptions;
+using EquipmentBorrowing.Application.Interfaces;
 using EquipmentBorrowing.Domain;
 
 namespace EquipmentBorrowing.Application.Services;
@@ -49,6 +50,14 @@ public class StudentManagementService
         {
             return OperationResult.Fail(ex.Message);
         }
+        catch (DataConflictException)
+        {
+            return OperationResult.Fail("That student number was just taken or the record changed. Refresh and try again; nothing was saved.");
+        }
+        catch (DataAccessException)
+        {
+            return OperationResult.Fail("The change could not be saved. Nothing was changed.");
+        }
     }
 
     // UC-13: Edit Student Details & Borrowing Eligibility
@@ -84,9 +93,17 @@ public class StudentManagementService
         {
             return OperationResult.Fail(ex.Message);
         }
+        catch (DataConflictException)
+        {
+            return OperationResult.Fail("That student number was just taken or the record changed. Refresh and try again; nothing was saved.");
+        }
+        catch (DataAccessException)
+        {
+            return OperationResult.Fail("The change could not be saved. Nothing was changed.");
+        }
     }
 
-    // UC-14: View Student Borrowing History
+    // UC-07: View Student Borrowing History
     public async Task<IReadOnlyList<Borrowing>> GetStudentHistoryAsync(
         int studentId,
         CancellationToken cancellationToken = default)
