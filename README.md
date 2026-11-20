@@ -6,9 +6,10 @@ This repository is for our ITSD81, Desktop Application Development.
 
 NOTE: This project was made first in Visual Studio, face-to-face by the pair collectively. After that, it was pushed to GitHub by one account.
 
-Members:
-- Mancawan, Claire Jasper
-- Solon, Shekinah Myrrh 
+Members: 
+Name | ID
+- Mancawan, Claire Jasper | 2024302297
+- Solon, Shekinah Myrrh | 2024302075
 
 Laboratory Activity 1 — ITSD 81, Desktop Application Development.
 
