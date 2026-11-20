@@ -3,7 +3,7 @@
              xmlns:vm="using:EquipmentBorrowing.Desktop.ViewModels"
              xmlns:views="using:EquipmentBorrowing.Desktop.Views"
              x:Class="EquipmentBorrowing.Desktop.App"
-             RequestedThemeVariant="Default">
+             RequestedThemeVariant="Light">
 
   <Application.DataTemplates>
     <!--

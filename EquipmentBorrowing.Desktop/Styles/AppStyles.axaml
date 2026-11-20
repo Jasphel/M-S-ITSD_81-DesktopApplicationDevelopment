@@ -1,6 +1,19 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+  <!--
+    Contrast note: the app uses fixed light surfaces (white / #F3F4F6 / #F9FAFB), so the theme is
+    forced to Light in App.axaml. With the OS in dark mode the Fluent controls used light text on
+    these light surfaces (unreadable) and drew dark list boxes. Every text colour below is at least
+    WCAG AA (4.5:1) against the surface it sits on.
+  -->
+
+  <!-- Window / base text -->
+  <Style Selector="Window">
+    <Setter Property="Background" Value="#FFFFFF" />
+    <Setter Property="Foreground" Value="#111827" />
+  </Style>
+
   <!-- Top title bar -->
   <Style Selector="Border.titleBar">
     <Setter Property="Background" Value="#1F2937" />
@@ -23,11 +36,14 @@
     <Setter Property="Padding" Value="16,10" />
     <Setter Property="Margin" Value="8,8,8,0" />
     <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="#111827" />
+    <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="CornerRadius" Value="6" />
   </Style>
-  <Style Selector="Button.navButton:pointerover">
+  <Style Selector="Button.navButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="#E5E7EB" />
+    <Setter Property="Foreground" Value="#111827" />
   </Style>
 
   <!-- Content area -->
@@ -39,23 +55,37 @@
   <Style Selector="TextBlock.sectionHeading">
     <Setter Property="FontSize" Value="16" />
     <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="#111827" />
     <Setter Property="Margin" Value="0,0,0,10" />
   </Style>
 
-  <!-- Field labels -->
+  <!-- Field labels (#4B5563 on #F9FAFB = 7.4:1) -->
   <Style Selector="TextBlock.fieldLabel">
     <Setter Property="FontSize" Value="12" />
-    <Setter Property="Foreground" Value="#6B7280" />
+    <Setter Property="Foreground" Value="#4B5563" />
     <Setter Property="Margin" Value="0,4,0,0" />
+  </Style>
+
+  <!-- Secondary text inside list rows -->
+  <Style Selector="TextBlock.muted">
+    <Setter Property="Foreground" Value="#4B5563" />
   </Style>
 
   <!-- Panels / cards (the borrow form, the return panel) -->
   <Style Selector="Border.panel">
     <Setter Property="Background" Value="#F9FAFB" />
-    <Setter Property="BorderBrush" Value="#E5E7EB" />
+    <Setter Property="BorderBrush" Value="#D1D5DB" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="8" />
     <Setter Property="Padding" Value="16" />
+  </Style>
+
+  <!-- Lists: explicit light surface so a dark OS theme can never turn them black -->
+  <Style Selector="ListBox">
+    <Setter Property="Background" Value="White" />
+    <Setter Property="Foreground" Value="#111827" />
+    <Setter Property="BorderBrush" Value="#D1D5DB" />
+    <Setter Property="BorderThickness" Value="1" />
   </Style>
 
   <!-- List rows -->
@@ -65,7 +95,7 @@
     <Setter Property="BorderThickness" Value="0,0,0,1" />
   </Style>
 
-  <!-- Availability badges -->
+  <!-- Availability / eligibility badges (AA on white: #15803D 5.0:1, #B91C1C 6.5:1) -->
   <Style Selector="TextBlock.badge">
     <Setter Property="FontSize" Value="12" />
     <Setter Property="FontWeight" Value="SemiBold" />
@@ -78,22 +108,48 @@
     <Setter Property="Foreground" Value="#B91C1C" />
   </Style>
 
-  <!-- Primary action button -->
+  <!-- Primary action button (white on #1F2937 = 14:1) -->
   <Style Selector="Button.primaryButton">
     <Setter Property="Background" Value="#1F2937" />
     <Setter Property="Foreground" Value="White" />
     <Setter Property="Padding" Value="14,10" />
     <Setter Property="CornerRadius" Value="6" />
   </Style>
-  <Style Selector="Button.primaryButton:pointerover">
+  <Style Selector="Button.primaryButton:pointerover /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="#374151" />
+    <Setter Property="Foreground" Value="White" />
+  </Style>
+  <Style Selector="Button.primaryButton:disabled /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="#6B7280" />
+    <Setter Property="Foreground" Value="White" />
   </Style>
 
   <!-- Status / feedback messages -->
   <Style Selector="TextBlock.statusMessage">
     <Setter Property="FontSize" Value="13" />
-    <Setter Property="Foreground" Value="#374151" />
+    <Setter Property="Foreground" Value="#1F2937" />
     <Setter Property="Margin" Value="0,4,0,0" />
+  </Style>
+
+  <!-- Loading / empty info text -->
+  <Style Selector="TextBlock.infoText">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="#374151" />
+    <Setter Property="Margin" Value="0,4,0,4" />
+  </Style>
+
+  <!-- Error banner (#7F1D1D on #FEE2E2 = 8.2:1) -->
+  <Style Selector="Border.errorBanner">
+    <Setter Property="Background" Value="#FEE2E2" />
+    <Setter Property="BorderBrush" Value="#B91C1C" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="Padding" Value="12,8" />
+    <Setter Property="Margin" Value="0,0,0,8" />
+  </Style>
+  <Style Selector="Border.errorBanner TextBlock">
+    <Setter Property="Foreground" Value="#7F1D1D" />
+    <Setter Property="FontSize" Value="13" />
   </Style>
 
 </Styles>
