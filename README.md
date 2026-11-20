@@ -447,3 +447,10 @@ WHERE b."Status" = 0;
 - Created a borrowing transaction through the Avalonia Desktop UI.
 - Verified data insertion directly inside the PostgreSQL database using pgAdmin.
 - Closed and reopened the Avalonia application; confirmed active borrowings were fetched correctly on startup.
+
+## Lab 4 additions
+- **Connection string**: copy `EquipmentBorrowing.Desktop/appsettings.example.json` to `appsettings.json` (git-ignored) and set your password, or set `EBS_CONNECTION_STRING` / `PGPASSWORD`.
+- **Startup**: migrations are applied and demo data inserted only when tables are empty.
+- **Errors**: shown in the UI with Retry; details in `%LOCALAPPDATA%\EquipmentBorrowing\error.log`.
+- **New use cases**: UC-02 filter, UC-06 multi-item checkout (single transaction), UC-08 equipment history, UC-09 search/filter/sort.
+- **Verification and traceability**: `docs/Lab4-Verification.md`; diagram `docs/use-case-diagram.png`.

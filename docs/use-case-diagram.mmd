@@ -1,0 +1,21 @@
+flowchart LR
+  staff([Staff Member])
+  subgraph System["Campus Equipment Borrowing System"]
+    UC01(UC-01 View Equipment Catalog)
+    UC02(UC-02 Filter Available Equipment)
+    UC03(UC-03 Borrow Equipment)
+    UC04(UC-04 View Active Borrowings)
+    UC05(UC-05 Return Equipment)
+    UC06(UC-06 Check Out Multiple Items)
+    UC07(UC-07 View Student History)
+    UC08(UC-08 View Equipment History)
+    UC09(UC-09 Search / Filter / Sort Borrowings)
+    UC12(UC-12 Register Student)
+    UC13(UC-13 Edit Student)
+    UC14(UC-14 Change Eligibility)
+    UC15(UC-15 Add Equipment)
+    UC16(UC-16 Edit Equipment)
+  end
+  staff --- UC01 & UC02 & UC03 & UC04 & UC05 & UC06 & UC07 & UC08 & UC09 & UC12 & UC13 & UC14 & UC15 & UC16
+  UC02 -.->|extends| UC01
+  UC06 -.->|extends| UC03
