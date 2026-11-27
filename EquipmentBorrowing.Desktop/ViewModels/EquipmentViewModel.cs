@@ -1,23 +1,23 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Globalization;
+using System.Linq;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EquipmentBorrowing.Application.Interfaces;
-using EquipmentBorrowing.Application.Results;
-using EquipmentBorrowing.Application.Services;
+using EquipmentBorrowing.Desktop.Api;
 using EquipmentBorrowing.Domain;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
 /// <summary>
-/// UC-01 catalog, UC-02 "available only" filter, UC-03 single borrow and UC-06 multi-item checkout.
+/// UC-01 catalog, UC-02 "available only" filter, UC-03 single borrow and UC-06 multi-item checkout over HTTP.
 /// </summary>
 public partial class EquipmentViewModel : ViewModelBase
 {
-    private readonly IEquipmentRepository _equipmentRepository;
-    private readonly IStudentRepository _studentRepository;
-    private readonly BorrowEquipmentService _borrowEquipmentService;
-    private readonly CheckoutMultipleEquipmentService _checkoutService;
+    private readonly BorrowingApiClient _api;
 
     public ObservableCollection<SelectableEquipment> EquipmentList { get; } = new();
     public ObservableCollection<Student> Students { get; } = new();
@@ -40,25 +40,16 @@ public partial class EquipmentViewModel : ViewModelBase
     [ObservableProperty]
     private string selectionSummary = "(none selected)";
 
-    // UC-02: when ticked, only currently available items are listed.
     [ObservableProperty]
     private bool showOnlyAvailable;
 
-    public EquipmentViewModel(
-        IEquipmentRepository equipmentRepository,
-        IStudentRepository studentRepository,
-        BorrowEquipmentService borrowEquipmentService,
-        CheckoutMultipleEquipmentService checkoutService)
+    public EquipmentViewModel(BorrowingApiClient api)
     {
-        _equipmentRepository = equipmentRepository;
-        _studentRepository = studentRepository;
-        _borrowEquipmentService = borrowEquipmentService;
-        _checkoutService = checkoutService;
+        _api = api;
     }
 
     partial void OnShowOnlyAvailableChanged(bool value)
     {
-        // Re-read the current state from PostgreSQL, then filter (UC-02 step 2-3).
         _ = LoadAsync();
     }
 
@@ -73,26 +64,29 @@ public partial class EquipmentViewModel : ViewModelBase
             var checkedIds = EquipmentList.Where(r => r.IsChecked).Select(r => r.Id).ToHashSet();
             var keepStudentId = SelectedStudent?.Id;
 
-            var equipment = await _equipmentRepository.GetAllAsync();
-            var students = await _studentRepository.GetAllAsync();
+            var equipment = await _api.GetEquipmentAsync(ShowOnlyAvailable ? true : null);
+            var students = await _api.GetStudentsAsync();
+
+            foreach (var existing in EquipmentList)
+            {
+                existing.PropertyChanged -= OnRowPropertyChanged;
+            }
 
             EquipmentList.Clear();
-            foreach (var item in equipment)
+            foreach (var dto in equipment)
             {
-                if (ShowOnlyAvailable && !item.IsAvailable)
-                {
-                    continue;
-                }
-
-                var row = new SelectableEquipment(item) { IsChecked = checkedIds.Contains(item.Id) };
+                _ = int.TryParse(dto.Id, out var equipId);
+                var domainItem = new Equipment(equipId, dto.EquipmentCode, dto.Name, dto.Description, dto.IsAvailable);
+                var row = new SelectableEquipment(domainItem) { IsChecked = checkedIds.Contains(domainItem.Id) };
                 row.PropertyChanged += OnRowPropertyChanged;
                 EquipmentList.Add(row);
             }
 
             Students.Clear();
-            foreach (var student in students)
+            foreach (var s in students)
             {
-                Students.Add(student);
+                _ = int.TryParse(s.Id, out var studentId);
+                Students.Add(new Student(studentId, s.StudentNumber, s.FullName, s.Contact, s.IsEligible));
             }
 
             SelectedStudent = Students.FirstOrDefault(s => s.Id == keepStudentId);
@@ -102,10 +96,9 @@ public partial class EquipmentViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            // "Connection failed" must look different from "no equipment" (A01, A02).
             EquipmentList.Clear();
             Students.Clear();
-            ErrorMessage = DescribeException(ex);
+            ErrorMessage = ex is ApiClientException ? ex.Message : DescribeException(ex);
         }
         finally
         {
@@ -135,9 +128,6 @@ public partial class EquipmentViewModel : ViewModelBase
     [RelayCommand]
     private async Task BorrowAsync()
     {
-        // --- Presentation validation: this ViewModel's own job ---
-        // Nothing here decides whether the borrow is allowed, only
-        // whether the form was filled in well enough to even ask.
         if (SelectedStudent is null)
         {
             StatusMessage = "Please select a student.";
@@ -157,76 +147,47 @@ public partial class EquipmentViewModel : ViewModelBase
             return;
         }
 
-        var student = SelectedStudent;
-        var returnDate = ExpectedReturnDate.Value.DateTime;
+        var studentIdStr = SelectedStudent.Id.ToString(CultureInfo.InvariantCulture);
+        var studentName = SelectedStudent.Name;
+        var dueDateStr = ExpectedReturnDate.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
         try
         {
-            // --- Business validation: entirely delegated ---
-            BorrowResult result;
             if (ticked.Count == 1)
             {
-                // UC-03: the database generates the borrowing id.
-                result = await _borrowEquipmentService.BorrowEquipmentAsync(
-                    borrowingId: 0,
-                    studentId: student.Id,
-                    equipmentId: ticked[0].Id,
-                    expectedReturnDate: returnDate);
+                var equipIdStr = ticked[0].Id.ToString(CultureInfo.InvariantCulture);
+                await _api.BorrowSingleAsync(studentIdStr, equipIdStr, dueDateStr);
+                StatusMessage = $"Borrowed \"{ticked[0].Name}\" for {studentName}.";
             }
             else
             {
-                // UC-06: all or nothing.
-                result = await _checkoutService.CheckOutAsync(
-                    student.Id,
-                    ticked.Select(r => r.Id).ToList(),
-                    returnDate);
+                var equipIds = ticked.Select(r => r.Id.ToString(CultureInfo.InvariantCulture)).ToArray();
+                var created = await _api.CheckoutMultipleAsync(studentIdStr, equipIds, dueDateStr);
+                StatusMessage = $"Checked out {created.Count} items for {studentName}: {string.Join(", ", ticked.Select(r => r.Name))}.";
             }
 
-            if (result.Succeeded)
+            foreach (var row in ticked)
             {
-                foreach (var row in ticked)
-                {
-                    row.IsChecked = false;
-                }
-
-                StatusMessage = ticked.Count == 1
-                    ? $"Borrowed \"{ticked[0].Name}\" for {student.Name}."
-                    : $"Checked out {ticked.Count} items for {student.Name}: {string.Join(", ", ticked.Select(r => r.Name))}.";
-            }
-            else
-            {
-                StatusMessage = DescribeFailure(result, ticked);
+                row.IsChecked = false;
             }
 
-            // Always refresh: availability changed, or the rejection was caused by stale data (BR-15).
             await LoadAsync();
+        }
+        catch (ApiClientException ex)
+        {
+            var scope = ticked.Count > 1 ? " Nothing was checked out." : string.Empty;
+            StatusMessage = ex.IsUnknownOutcome
+                ? "The connection was lost while saving, so the result is unknown. Do not retry yet: refresh and check Active Borrowings first."
+                : ex.Message + scope;
+
+            if (!ex.IsUnreachable && !ex.IsUnknownOutcome)
+            {
+                await LoadAsync();
+            }
         }
         catch (Exception ex)
         {
             StatusMessage = DescribeException(ex);
         }
-    }
-
-    private static string DescribeFailure(BorrowResult result, IReadOnlyList<SelectableEquipment> ticked)
-    {
-        var offending = ticked.FirstOrDefault(r => r.Id == result.OffendingEquipmentId);
-        var itemText = offending is null ? "An item" : $"\"{offending.Name}\" ({offending.Identifier})";
-        var scope = ticked.Count > 1 ? " Nothing was checked out." : string.Empty;
-
-        return result.FailureReason switch
-        {
-            BorrowFailureReason.StudentNotFound => "That student could not be found.",
-            BorrowFailureReason.StudentNotAllowedToBorrow => "This student is not permitted to borrow equipment." + scope,
-            BorrowFailureReason.BorrowingLimitReached => "This request would exceed the limit of 3 active borrowed items per student." + scope,
-            BorrowFailureReason.EquipmentNotFound => itemText + " could not be found." + scope,
-            BorrowFailureReason.EquipmentUnavailable => itemText + " is currently unavailable." + scope,
-            BorrowFailureReason.InvalidReturnDate => "The expected return date must be later than today." + scope,
-            BorrowFailureReason.NotEnoughItems => "A multi-item checkout needs at least two items.",
-            BorrowFailureReason.DuplicateItems => "The same item was selected more than once." + scope,
-            BorrowFailureReason.Conflict => "The data changed while saving (an item may have just been borrowed). Nothing was saved and the list was refreshed.",
-            BorrowFailureReason.PersistenceFailed => "The borrowing could not be saved. Nothing was changed.",
-            BorrowFailureReason.OutcomeUnknown => "The connection was lost while saving, so the result is unknown. Do not retry yet: refresh and check Active Borrowings first.",
-            _ => "The borrow request could not be completed."
-        };
     }
 }

@@ -85,13 +85,15 @@ public class CheckoutMultipleEquipmentService
             }
 
             // --- Writes: one active borrowing per item + the availability change ---
-            var checkoutTime = DateTime.Now;
+            var checkoutTime = DateTime.UtcNow;
+            var utcReturnDate = ToUtcDateTime(expectedReturnDate);
+
             foreach (var equipment in items)
             {
                 equipment.MarkAsBorrowed();
 
                 await transaction.Borrowings.AddAsync(
-                    new Borrowing(0, studentId, equipment.Id, checkoutTime, expectedReturnDate),
+                    new Borrowing(0, studentId, equipment.Id, checkoutTime, utcReturnDate),
                     cancellationToken);
 
                 await transaction.Equipment.UpdateAsync(equipment, cancellationToken);
@@ -116,4 +118,11 @@ public class CheckoutMultipleEquipmentService
             return BorrowResult.Fail(BorrowFailureReason.PersistenceFailed);
         }
     }
+
+    private static DateTime ToUtcDateTime(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Local).ToUniversalTime()
+    };
 }

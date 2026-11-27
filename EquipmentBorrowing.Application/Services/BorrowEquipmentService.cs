@@ -126,12 +126,14 @@ public class BorrowEquipmentService
             return BorrowResult.Fail(BorrowFailureReason.EquipmentUnavailable);
         }
 
+        var utcReturnDate = ToUtcDateTime(expectedReturnDate);
+
         var borrowing = new Borrowing(
             borrowingId,
             studentId,
             equipmentId,
-            DateTime.Now,
-            expectedReturnDate);
+            DateTime.UtcNow,
+            utcReturnDate);
 
         equipment.MarkAsBorrowed();
 
@@ -143,4 +145,11 @@ public class BorrowEquipmentService
 
         return BorrowResult.Success();
     }
+
+    private static DateTime ToUtcDateTime(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Local).ToUniversalTime()
+    };
 }

@@ -31,13 +31,11 @@ internal static class DbSaveHelper
                 throw new DataConflictException("The change conflicts with existing data.", ex);
             }
 
+            var detail = ex.InnerException?.Message ?? ex.Message;
             throw new DataAccessException("The change could not be saved.", ex);
         }
         finally
         {
-            // A failed entity must not stay tracked, otherwise the next SaveChanges on
-            // this context would try to write it again. Successful entities are released
-            // too so the next read never returns a stale tracked copy.
             context.ChangeTracker.Clear();
         }
     }

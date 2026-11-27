@@ -1,18 +1,16 @@
+using System;
 using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EquipmentBorrowing.Application.Interfaces;
-using EquipmentBorrowing.Application.Results;
-using EquipmentBorrowing.Application.Services;
+using EquipmentBorrowing.Desktop.Api;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
 public partial class BorrowingsViewModel : ViewModelBase
 {
-    private readonly IBorrowingRepository _borrowingRepository;
-    private readonly IEquipmentRepository _equipmentRepository;
-    private readonly IStudentRepository _studentRepository;
-    private readonly ReturnEquipmentService _returnEquipmentService;
+    private readonly BorrowingApiClient _api;
 
     public ObservableCollection<BorrowingListItem> ActiveBorrowings { get; } = new();
 
@@ -25,16 +23,9 @@ public partial class BorrowingsViewModel : ViewModelBase
     [ObservableProperty]
     private bool showEmptyState;
 
-    public BorrowingsViewModel(
-        IBorrowingRepository borrowingRepository,
-        IEquipmentRepository equipmentRepository,
-        IStudentRepository studentRepository,
-        ReturnEquipmentService returnEquipmentService)
+    public BorrowingsViewModel(BorrowingApiClient api)
     {
-        _borrowingRepository = borrowingRepository;
-        _equipmentRepository = equipmentRepository;
-        _studentRepository = studentRepository;
-        _returnEquipmentService = returnEquipmentService;
+        _api = api;
     }
 
     [RelayCommand]
@@ -45,36 +36,30 @@ public partial class BorrowingsViewModel : ViewModelBase
 
         try
         {
-            var active = await _borrowingRepository.GetActiveAsync();
-            var students = (await _studentRepository.GetAllAsync()).ToDictionary(s => s.Id);
-            var equipment = (await _equipmentRepository.GetAllAsync()).ToDictionary(e => e.Id);
+            var active = await _api.SearchBorrowingsAsync(status: "Active");
 
             ActiveBorrowings.Clear();
 
-            foreach (var borrowing in active)
+            foreach (var b in active)
             {
-                var studentName = students.TryGetValue(borrowing.StudentId, out var student)
-                    ? student.Name
-                    : "Unknown student";
-
-                var equipmentName = equipment.TryGetValue(borrowing.EquipmentId, out var item)
-                    ? item.Name
-                    : "Unknown equipment";
+                _ = int.TryParse(b.Id, out var id);
+                _ = DateTime.TryParse(b.BorrowedDate, out var borrowedDt);
+                _ = DateTime.TryParse(b.ExpectedReturnDate, out var expectedDt);
 
                 ActiveBorrowings.Add(new BorrowingListItem
                 {
-                    Id = borrowing.Id,
-                    StudentName = studentName,
-                    EquipmentName = equipmentName,
-                    DateBorrowed = borrowing.DateBorrowed,
-                    ExpectedReturnDate = borrowing.ExpectedReturnDate
+                    Id = id,
+                    StudentName = string.IsNullOrWhiteSpace(b.StudentName) ? "Unknown student" : b.StudentName,
+                    EquipmentName = string.IsNullOrWhiteSpace(b.EquipmentName) ? "Unknown equipment" : b.EquipmentName,
+                    DateBorrowed = borrowedDt,
+                    ExpectedReturnDate = expectedDt
                 });
             }
         }
         catch (Exception ex)
         {
             ActiveBorrowings.Clear();
-            ErrorMessage = DescribeException(ex);
+            ErrorMessage = ex is ApiClientException ? ex.Message : DescribeException(ex);
         }
         finally
         {
@@ -96,29 +81,26 @@ public partial class BorrowingsViewModel : ViewModelBase
 
         try
         {
-            var result = await _returnEquipmentService.ReturnEquipmentAsync(selected.Id);
-
-            StatusMessage = result.Succeeded
-                ? $"Returned \"{selected.EquipmentName}\"."
-                : DescribeFailure(result.FailureReason);
-
+            await _api.ReturnBorrowingAsync(selected.Id.ToString(CultureInfo.InvariantCulture));
+            StatusMessage = $"Returned \"{selected.EquipmentName}\".";
             SelectedBorrowing = null;
-            await LoadAsync(); // refresh in every case so a stale selection disappears
+            await LoadAsync();
+        }
+        catch (ApiClientException ex)
+        {
+            StatusMessage = ex.IsUnknownOutcome
+                ? "The connection was lost while saving, so the result is unknown. Refresh and check the list before trying again."
+                : ex.Message;
+
+            if (!ex.IsUnreachable && !ex.IsUnknownOutcome)
+            {
+                SelectedBorrowing = null;
+                await LoadAsync();
+            }
         }
         catch (Exception ex)
         {
             StatusMessage = DescribeException(ex);
         }
     }
-
-    private static string DescribeFailure(ReturnFailureReason reason) => reason switch
-    {
-        ReturnFailureReason.BorrowingNotFound => "That borrowing record could not be found.",
-        ReturnFailureReason.AlreadyReturned => "This equipment has already been returned. No change was made.",
-        ReturnFailureReason.EquipmentNotFound => "The related equipment record could not be found.",
-        ReturnFailureReason.Conflict => "The record changed while saving. Nothing was saved and the list was refreshed.",
-        ReturnFailureReason.PersistenceFailed => "The return could not be saved. Nothing was changed.",
-        ReturnFailureReason.OutcomeUnknown => "The connection was lost while saving, so the result is unknown. Refresh and check the list before trying again.",
-        _ => "The return request could not be completed."
-    };
 }

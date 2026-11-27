@@ -1,19 +1,12 @@
 using System;
 using System.IO;
-using System.Linq;
+using System.Net.Http;
 using System.Text.Json;
-using System.Threading.Tasks;
-using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using EquipmentBorrowing.Application.Interfaces;
-using EquipmentBorrowing.Application.Services;
+using EquipmentBorrowing.Desktop.Api;
 using EquipmentBorrowing.Desktop.ViewModels;
 using EquipmentBorrowing.Desktop.Views;
-using EquipmentBorrowing.Domain;
-using EquipmentBorrowing.Infrastructure.Data;
-using EquipmentBorrowing.Infrastructure.Repositories;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace EquipmentBorrowing.Desktop;
@@ -36,12 +29,9 @@ public partial class App : Avalonia.Application
 
             Services = services.BuildServiceProvider();
 
-            // The window opens immediately. The database is migrated/seeded in the background
-            // (MainWindowViewModel.StartAsync) so a slow or unreachable PostgreSQL never freezes
-            // the UI; every screen then shows its own loading / error / empty state.
             var mainViewModel = Services.GetRequiredService<MainWindowViewModel>();
             desktop.MainWindow = new MainWindow { DataContext = mainViewModel };
-            _ = mainViewModel.StartAsync(() => DatabaseInitializer.InitializeAsync(Services));
+            _ = mainViewModel.StartAsync(() => Task.CompletedTask);
         }
 
         base.OnFrameworkInitializationCompleted();
@@ -49,32 +39,14 @@ public partial class App : Avalonia.Application
 
     private static void ConfigureServices(IServiceCollection services)
     {
-        var connectionString = ResolveConnectionString();
+        var apiBaseUrl = ResolveApiBaseUrl();
 
-        // Register DbContext with Transient lifetime so each resolved service/scope gets an isolated context
-        // avoiding concurrent async DbContext access in desktop ViewModels
-        services.AddDbContext<BorrowingDbContext>(
-            options => options.UseNpgsql(connectionString),
-            contextLifetime: ServiceLifetime.Transient,
-            optionsLifetime: ServiceLifetime.Singleton);
-
-        // Repositories (Transient to pair cleanly with isolated DbContext instances)
-        services.AddTransient<IStudentRepository, StudentRepository>();
-        services.AddTransient<IEquipmentRepository, EquipmentRepository>();
-        services.AddTransient<IBorrowingRepository, BorrowingRepository>();
-        services.AddTransient<IBorrowingQueryRepository, BorrowingQueryRepository>();
-
-        // One short-lived context + one PostgreSQL transaction per business operation
-        // (issue / return / multi-item checkout). Uses the singleton DbContextOptions above.
-        services.AddSingleton<IBorrowingTransactionFactory, BorrowingTransactionFactory>();
-
-        // Application services
-        services.AddTransient<BorrowEquipmentService>();
-        services.AddTransient<ReturnEquipmentService>();
-        services.AddTransient<StudentManagementService>();
-        services.AddTransient<EquipmentManagementService>();
-        services.AddTransient<CheckoutMultipleEquipmentService>();
-        services.AddTransient<BorrowingQueryService>();
+        services.AddSingleton(_ => new HttpClient
+        {
+            BaseAddress = new Uri(apiBaseUrl.EndsWith("/") ? apiBaseUrl : apiBaseUrl + "/"),
+            Timeout = TimeSpan.FromSeconds(15)
+        });
+        services.AddSingleton<BorrowingApiClient>();
 
         // ViewModels
         services.AddTransient<MainWindowViewModel>();
@@ -85,35 +57,31 @@ public partial class App : Avalonia.Application
         services.AddTransient<BorrowingSearchViewModel>();
     }
 
-    private static string ResolveConnectionString()
+    private static string ResolveApiBaseUrl()
     {
-        // 1. Check environment variable first (no secrets in source code)
-        var envConn = Environment.GetEnvironmentVariable("EBS_CONNECTION_STRING");
-        if (!string.IsNullOrWhiteSpace(envConn))
-            return envConn;
+        var envUrl = Environment.GetEnvironmentVariable("EBS_API_BASE_URL");
+        if (!string.IsNullOrWhiteSpace(envUrl))
+            return envUrl.Trim();
 
-        // 2. Check local untracked appsettings.json if present (copy appsettings.example.json)
         var localConfigPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
         if (File.Exists(localConfigPath))
         {
             try
             {
                 using var doc = JsonDocument.Parse(File.ReadAllText(localConfigPath));
-                if (doc.RootElement.TryGetProperty("ConnectionStrings", out var cs) &&
-                    cs.TryGetProperty("DefaultConnection", out var defaultConn) &&
-                    !string.IsNullOrWhiteSpace(defaultConn.GetString()))
+                if (doc.RootElement.TryGetProperty("Api", out var apiSection) &&
+                    apiSection.TryGetProperty("BaseUrl", out var baseUrlProp) &&
+                    !string.IsNullOrWhiteSpace(baseUrlProp.GetString()))
                 {
-                    return defaultConn.GetString()!;
+                    return baseUrlProp.GetString()!.Trim();
                 }
             }
             catch (Exception ex)
             {
-                // A malformed file must not stop the app from opening.
                 ErrorLog.Write(ex);
             }
         }
 
-        // 3. Secret-free template fallback (local developer sets PGPASSWORD or appsettings.json)
-        return "Host=localhost;Port=5432;Database=EquipmentBorrowingDb;Username=postgres";
+        return "http://localhost:5000";
     }
 }

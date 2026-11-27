@@ -1,30 +1,30 @@
-using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using EquipmentBorrowing.Application.Queries;
-using EquipmentBorrowing.Application.Services;
+using EquipmentBorrowing.Desktop.Api;
+using EquipmentBorrowing.Domain;
+using System;
+using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
-/// <summary>UC-09 Search, Filter and Sort Borrowings (BR-17, BR-19).</summary>
+/// <summary>Search, Filter and Sort Borrowings over HTTP.</summary>
 public partial class BorrowingSearchViewModel : ViewModelBase
 {
-    private readonly BorrowingQueryService _queryService;
+    private readonly BorrowingApiClient _api;
 
     public ObservableCollection<BorrowingRowItem> Results { get; } = new();
 
     [ObservableProperty]
     private string searchText = string.Empty;
 
-    // 0 = All, 1 = Active, 2 = Returned (same order as BorrowingStatusFilter)
     [ObservableProperty]
     private int statusIndex;
 
-    // 0 = Checkout date, 1 = Expected return date
     [ObservableProperty]
     private int sortFieldIndex;
 
-    // 0 = Descending, 1 = Ascending
     [ObservableProperty]
     private int sortDirectionIndex;
 
@@ -34,12 +34,11 @@ public partial class BorrowingSearchViewModel : ViewModelBase
     [ObservableProperty]
     private string resultSummary = string.Empty;
 
-    public BorrowingSearchViewModel(BorrowingQueryService queryService)
+    public BorrowingSearchViewModel(BorrowingApiClient api)
     {
-        _queryService = queryService;
+        _api = api;
     }
 
-    /// <summary>Runs the search. Named LoadAsync so the shared Retry button works too.</summary>
     [RelayCommand]
     public async Task LoadAsync()
     {
@@ -48,25 +47,46 @@ public partial class BorrowingSearchViewModel : ViewModelBase
 
         try
         {
-            var criteria = new BorrowingSearchCriteria
+            var status = StatusIndex switch
             {
-                SearchText = SearchText,
-                Status = StatusIndex switch
-                {
-                    1 => BorrowingStatusFilter.Active,
-                    2 => BorrowingStatusFilter.Returned,
-                    _ => BorrowingStatusFilter.All
-                },
-                SortBy = SortFieldIndex == 1 ? BorrowingSortField.ExpectedReturnDate : BorrowingSortField.CheckoutDate,
-                Descending = SortDirectionIndex != 1
+                1 => "Active",
+                2 => "Returned",
+                _ => "All"
             };
+            var sort = SortFieldIndex == 1 ? "expectedReturnDate" : "borrowedDate";
+            var direction = SortDirectionIndex == 1 ? "asc" : "desc";
 
-            var records = await _queryService.SearchAsync(criteria);
+            var records = await _api.SearchBorrowingsAsync(
+                search: string.IsNullOrWhiteSpace(SearchText) ? null : SearchText,
+                status: status,
+                sort: sort,
+                direction: direction);
 
             Results.Clear();
-            foreach (var record in records)
+            foreach (var b in records)
             {
-                Results.Add(BorrowingRowItem.From(record));
+                _ = int.TryParse(b.Id, out var borrowId);
+                _ = int.TryParse(b.StudentId, out var studentId);
+                _ = int.TryParse(b.EquipmentId, out var eqId);
+                _ = DateTime.TryParse(b.BorrowedDate, out var borrowedDt);
+                _ = DateTime.TryParse(b.ExpectedReturnDate, out var expectedDt);
+                DateTime? returnedDt = DateTime.TryParse(b.ReturnedDate, out var parsedRet) ? parsedRet : null;
+                Enum.TryParse<BorrowingStatus>(b.Status, true, out var parsedStatus);
+
+                Results.Add(BorrowingRowItem.From(new BorrowingRecord
+                {
+                    BorrowingId = borrowId,
+                    StudentId = studentId,
+                    StudentNumber = b.StudentNumber,
+                    StudentName = b.StudentName,
+                    EquipmentId = eqId,
+                    EquipmentIdentifier = b.EquipmentCode,
+                    EquipmentName = b.EquipmentName,
+                    DateBorrowed = borrowedDt,
+                    ExpectedReturnDate = expectedDt,
+                    ActualReturnDate = returnedDt,
+                    Status = parsedStatus
+                }));
             }
 
             ResultSummary = Results.Count == 1 ? "1 matching borrowing" : $"{Results.Count} matching borrowings";
@@ -75,12 +95,11 @@ public partial class BorrowingSearchViewModel : ViewModelBase
         {
             Results.Clear();
             ResultSummary = string.Empty;
-            ErrorMessage = DescribeException(ex);
+            ErrorMessage = ex is ApiClientException ? ex.Message : DescribeException(ex);
         }
         finally
         {
             IsBusy = false;
-            // No matches is an explicit empty state, not an error (BR-17, BR-19).
             ShowEmptyState = !HasError && Results.Count == 0;
         }
     }

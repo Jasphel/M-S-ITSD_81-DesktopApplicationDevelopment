@@ -1,17 +1,18 @@
-using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EquipmentBorrowing.Application.Interfaces;
-using EquipmentBorrowing.Application.Services;
+using EquipmentBorrowing.Application.Queries;
+using EquipmentBorrowing.Desktop.Api;
 using EquipmentBorrowing.Domain;
+using System;
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Threading.Tasks;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
 public partial class EquipmentManagementViewModel : ViewModelBase
 {
-    private readonly IEquipmentRepository _equipmentRepository;
-    private readonly EquipmentManagementService _equipmentService;
-    private readonly BorrowingQueryService _queryService;
+    private readonly BorrowingApiClient _api;
 
     public ObservableCollection<Equipment> EquipmentList { get; } = new();
     public ObservableCollection<BorrowingRowItem> SelectedEquipmentHistory { get; } = new();
@@ -43,7 +44,6 @@ public partial class EquipmentManagementViewModel : ViewModelBase
     [ObservableProperty]
     private bool showEmptyState;
 
-    // Selected-item history (UC-08) has its own loading / error / empty state (BR-19).
     [ObservableProperty]
     private bool isHistoryBusy;
 
@@ -53,14 +53,9 @@ public partial class EquipmentManagementViewModel : ViewModelBase
     [ObservableProperty]
     private bool showHistoryEmpty;
 
-    public EquipmentManagementViewModel(
-        IEquipmentRepository equipmentRepository,
-        EquipmentManagementService equipmentService,
-        BorrowingQueryService queryService)
+    public EquipmentManagementViewModel(BorrowingApiClient api)
     {
-        _equipmentRepository = equipmentRepository;
-        _equipmentService = equipmentService;
-        _queryService = queryService;
+        _api = api;
     }
 
     [RelayCommand]
@@ -71,18 +66,21 @@ public partial class EquipmentManagementViewModel : ViewModelBase
 
         try
         {
-            var list = await _equipmentRepository.GetAllAsync();
+            var list = await _api.GetEquipmentAsync();
 
             EquipmentList.Clear();
-            foreach (var item in list)
-                EquipmentList.Add(item);
+            foreach (var dto in list)
+            {
+                _ = int.TryParse(dto.Id, out var id);
+                EquipmentList.Add(new Equipment(id, dto.EquipmentCode, dto.Name, dto.Description, dto.IsAvailable));
+            }
 
             PrepareNewEquipmentForm();
         }
         catch (Exception ex)
         {
             EquipmentList.Clear();
-            ErrorMessage = DescribeException(ex);
+            ErrorMessage = ex is ApiClientException ? ex.Message : DescribeException(ex);
         }
         finally
         {
@@ -123,22 +121,44 @@ public partial class EquipmentManagementViewModel : ViewModelBase
 
         try
         {
-            var records = await _queryService.GetEquipmentHistoryAsync(equipmentId);
+            var records = await _api.GetEquipmentBorrowingsAsync(equipmentId.ToString(CultureInfo.InvariantCulture));
 
-            // Ignore a stale result if another item was selected while this was loading.
             if (SelectedEquipment?.Id != equipmentId)
                 return;
 
             SelectedEquipmentHistory.Clear();
-            foreach (var record in records)
-                SelectedEquipmentHistory.Add(BorrowingRowItem.From(record));
+            foreach (var b in records)
+            {
+                _ = int.TryParse(b.Id, out var borrowId);
+                _ = int.TryParse(b.StudentId, out var studentId);
+                _ = int.TryParse(b.EquipmentId, out var eqId);
+                _ = DateTime.TryParse(b.BorrowedDate, out var borrowedDt);
+                _ = DateTime.TryParse(b.ExpectedReturnDate, out var expectedDt);
+                DateTime? returnedDt = DateTime.TryParse(b.ReturnedDate, out var parsedRet) ? parsedRet : null;
+                Enum.TryParse<BorrowingStatus>(b.Status, true, out var parsedStatus);
+
+                SelectedEquipmentHistory.Add(BorrowingRowItem.From(new BorrowingRecord
+                {
+                    BorrowingId = borrowId,
+                    StudentId = studentId,
+                    StudentNumber = b.StudentNumber,
+                    StudentName = b.StudentName,
+                    EquipmentId = eqId,
+                    EquipmentIdentifier = b.EquipmentCode,
+                    EquipmentName = b.EquipmentName,
+                    DateBorrowed = borrowedDt,
+                    ExpectedReturnDate = expectedDt,
+                    ActualReturnDate = returnedDt,
+                    Status = parsedStatus
+                }));
+            }
 
             ShowHistoryEmpty = SelectedEquipmentHistory.Count == 0;
         }
         catch (Exception ex)
         {
             SelectedEquipmentHistory.Clear();
-            HistoryError = DescribeException(ex);
+            HistoryError = ex is ApiClientException ? ex.Message : DescribeException(ex);
         }
         finally
         {
@@ -168,40 +188,35 @@ public partial class EquipmentManagementViewModel : ViewModelBase
     {
         try
         {
-            OperationResult result;
+            string? desc = string.IsNullOrWhiteSpace(DescriptionInput) ? null : DescriptionInput.Trim();
+            string savedCode;
+
             if (SelectedEquipment is null)
             {
-                // UC-15: Add Equipment
-                result = await _equipmentService.AddEquipmentAsync(
-                    IdentifierInput,
-                    NameInput,
-                    DescriptionInput);
+                var created = await _api.CreateEquipmentAsync(
+                    IdentifierInput.Trim(),
+                    NameInput.Trim(),
+                    desc);
+                savedCode = created.EquipmentCode;
             }
             else
             {
-                // UC-16: Edit Equipment (availability is never edited here, BR-07)
-                result = await _equipmentService.UpdateEquipmentAsync(
-                    SelectedEquipment.Id,
-                    IdentifierInput,
-                    NameInput,
-                    DescriptionInput);
+                var updated = await _api.UpdateEquipmentAsync(
+                    SelectedEquipment.Id.ToString(CultureInfo.InvariantCulture),
+                    IdentifierInput.Trim(),
+                    NameInput.Trim(),
+                    desc);
+                savedCode = updated.EquipmentCode;
             }
 
-            if (!result.IsSuccess)
-            {
-                StatusMessage = result.ErrorMessage ?? "Operation failed.";
-                return;
-            }
-
-            var savedIdentifier = Equipment.NormalizeIdentifier(IdentifierInput);
             await LoadAsync();
             StatusMessage = HasError
-                ? $"Equipment '{savedIdentifier}' was saved, but the list could not be refreshed."
-                : $"Equipment '{savedIdentifier}' saved successfully.";
+                ? $"Equipment '{savedCode}' was saved, but the list could not be refreshed."
+                : $"Equipment '{savedCode}' saved successfully.";
         }
         catch (Exception ex)
         {
-            StatusMessage = DescribeException(ex);
+            StatusMessage = ex is ApiClientException ? ex.Message : DescribeException(ex);
         }
     }
 }

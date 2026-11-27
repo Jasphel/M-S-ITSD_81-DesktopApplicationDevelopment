@@ -455,3 +455,20 @@ WHERE b."Status" = 0;
 - **Errors**: shown in the UI with Retry; details in `%LOCALAPPDATA%\EquipmentBorrowing\error.log`.
 - **New use cases**: UC-02 filter, UC-06 multi-item checkout (single transaction), UC-08 equipment history, UC-09 search/filter/sort.
 - **Verification and traceability**: `docs/Lab4-Verification.md`; diagram `docs/use-case-diagram.png`.
+
+# Laboratory Activity 5 - API continuation
+
+The Lab 5 API project is `EquipmentBorrowing.Api`. It hosts versioned endpoints under `/api/v1` and exposes a machine-readable OpenAPI document at `/openapi/v1.json`. The API uses the existing Application services, Infrastructure repositories, PostgreSQL EF Core context, and transaction factory. The existing Avalonia client is still wired directly to PostgreSQL and needs its HTTP migration before the desktop portion of Lab 5 is complete.
+
+## Local setup
+
+1. Install the .NET 10 SDK and PostgreSQL. Create a disposable database for development.
+2. Set `EBS_CONNECTION_STRING` in the environment for the API process. Example format: `Host=localhost;Port=5432;Database=EquipmentBorrowingDb;Username=postgres;Password=<local-secret>`. Keep this value out of source control.
+3. Apply the retained migrations from the repository root: `dotnet ef database update --project EquipmentBorrowing.Infrastructure/EquipmentBorrowing.Infrastructure.csproj --startup-project EquipmentBorrowing.Api/EquipmentBorrowing.Api.csproj`.
+4. Start the API independently: `dotnet run --project EquipmentBorrowing.Api/EquipmentBorrowing.Api.csproj`. Open `/openapi/v1.json` on its local address for the published contract.
+5. The API and desktop processes are separate. Desktop HTTP base URL configuration is not implemented yet; the existing desktop currently reads PostgreSQL directly. Do not use the desktop as evidence of API-client behavior until that is migrated.
+6. Reset only a disposable database when preparing acceptance data. The Lab 4 demo seed is not the T01-T08 reference dataset; follow `DAD LAB 5/ITSD81 Laboratory Activity 5 API and Acceptance Reference.pdf` to prepare the supplied dataset and record each test honestly.
+
+Routes currently mapped: students list/detail/create/update/eligibility/history; equipment list/detail/create/update/history; borrowing list/detail/create/return; and multi-item checkout. Success and error payloads are JSON. The API is independently hostable and does not start Avalonia.
+
+See `docs/Lab5-Execution-Record.md` for baseline, continuity, traceability, and acceptance-test status. This source snapshot has no `lab5-submitted` tag because the work and acceptance evidence are not yet complete.

@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -33,20 +35,18 @@ public partial class MainWindowViewModel : ViewModelBase
         currentViewModel = _equipmentViewModel;
     }
 
-    /// <summary>
-    /// Runs the supplied database bootstrap (migrations + safe seed) in the background, then opens the
-    /// equipment screen. A failed bootstrap is logged and never thrown: each screen reports its own
-    /// connection problem and offers Retry.
-    /// </summary>
-    public async Task StartAsync(Func<Task> initializeDatabase)
+    public async Task StartAsync(Func<Task>? initializeHook = null)
     {
-        try
+        if (initializeHook is not null)
         {
-            await initializeDatabase();
-        }
-        catch (Exception ex)
-        {
-            ErrorLog.Write(ex);
+            try
+            {
+                await initializeHook();
+            }
+            catch (Exception ex)
+            {
+                ErrorLog.Write(ex);
+            }
         }
 
         IsStarting = false;

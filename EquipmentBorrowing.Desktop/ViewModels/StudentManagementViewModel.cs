@@ -1,9 +1,11 @@
+using System;
+using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using EquipmentBorrowing.Application.Interfaces;
-using EquipmentBorrowing.Application.Services;
+using EquipmentBorrowing.Desktop.Api;
 using EquipmentBorrowing.Domain;
-using System.Collections.ObjectModel;
 
 namespace EquipmentBorrowing.Desktop.ViewModels;
 
@@ -18,9 +20,7 @@ public sealed record StudentHistoryItem(
 
 public partial class StudentManagementViewModel : ViewModelBase
 {
-    private readonly IStudentRepository _studentRepository;
-    private readonly IEquipmentRepository _equipmentRepository;
-    private readonly StudentManagementService _studentService;
+    private readonly BorrowingApiClient _api;
 
     public ObservableCollection<Student> Students { get; } = new();
     public ObservableCollection<StudentHistoryItem> SelectedStudentHistory { get; } = new();
@@ -52,7 +52,6 @@ public partial class StudentManagementViewModel : ViewModelBase
     [ObservableProperty]
     private bool showEmptyState;
 
-    // Selected-student history (UC-07) has its own loading / error / empty state (BR-19).
     [ObservableProperty]
     private bool isHistoryBusy;
 
@@ -62,14 +61,9 @@ public partial class StudentManagementViewModel : ViewModelBase
     [ObservableProperty]
     private bool showHistoryEmpty;
 
-    public StudentManagementViewModel(
-        IStudentRepository studentRepository,
-        IEquipmentRepository equipmentRepository,
-        StudentManagementService studentService)
+    public StudentManagementViewModel(BorrowingApiClient api)
     {
-        _studentRepository = studentRepository;
-        _equipmentRepository = equipmentRepository;
-        _studentService = studentService;
+        _api = api;
     }
 
     [RelayCommand]
@@ -80,17 +74,19 @@ public partial class StudentManagementViewModel : ViewModelBase
 
         try
         {
-            var list = await _studentRepository.GetAllAsync();
+            var list = await _api.GetStudentsAsync();
             Students.Clear();
-            foreach (var student in list)
-                Students.Add(student);
+            foreach (var dto in list)
+            {
+                Students.Add(MapStudent(dto));
+            }
 
             PrepareNewStudentForm();
         }
         catch (Exception ex)
         {
             Students.Clear();
-            ErrorMessage = DescribeException(ex);
+            ErrorMessage = ex is ApiClientException ? ex.Message : DescribeException(ex);
         }
         finally
         {
@@ -129,29 +125,27 @@ public partial class StudentManagementViewModel : ViewModelBase
 
         try
         {
-            var history = await _studentService.GetStudentHistoryAsync(studentId);
-            var equipmentMap = (await _equipmentRepository.GetAllAsync())
-                .ToDictionary(e => e.Id, e => $"{e.Identifier} - {e.Name}");
+            var history = await _api.GetStudentBorrowingsAsync(studentId.ToString(CultureInfo.InvariantCulture));
 
-            // The user may have clicked another student while this was loading: ignore stale results.
             if (SelectedStudent?.Id != studentId)
                 return;
 
             SelectedStudentHistory.Clear();
             foreach (var b in history)
             {
-                var equipLabel = equipmentMap.TryGetValue(b.EquipmentId, out var label)
-                    ? label
-                    : $"Equipment #{b.EquipmentId}";
+                _ = int.TryParse(b.Id, out var borrowId);
+                var equipLabel = string.IsNullOrWhiteSpace(b.EquipmentCode)
+                    ? b.EquipmentName
+                    : $"{b.EquipmentCode} - {b.EquipmentName}";
 
                 SelectedStudentHistory.Add(new StudentHistoryItem(
-                    b.Id,
+                    borrowId,
                     equipLabel,
-                    b.DateBorrowed.ToString("yyyy-MM-dd"),
-                    b.ExpectedReturnDate.ToString("yyyy-MM-dd"),
-                    b.ActualReturnDate?.ToString("yyyy-MM-dd") ?? "—",
-                    b.Status.ToString(),
-                    b.Status == BorrowingStatus.Returned));
+                    b.BorrowedDate,
+                    b.ExpectedReturnDate,
+                    string.IsNullOrWhiteSpace(b.ReturnedDate) ? "—" : b.ReturnedDate,
+                    b.Status,
+                    string.Equals(b.Status, "Returned", StringComparison.OrdinalIgnoreCase)));
             }
 
             ShowHistoryEmpty = SelectedStudentHistory.Count == 0;
@@ -159,7 +153,7 @@ public partial class StudentManagementViewModel : ViewModelBase
         catch (Exception ex)
         {
             SelectedStudentHistory.Clear();
-            HistoryError = DescribeException(ex);
+            HistoryError = ex is ApiClientException ? ex.Message : DescribeException(ex);
         }
         finally
         {
@@ -189,49 +183,63 @@ public partial class StudentManagementViewModel : ViewModelBase
     {
         try
         {
-            OperationResult result;
+            string? contact = string.IsNullOrWhiteSpace(ContactInfoInput) ? null : ContactInfoInput.Trim();
+
             if (SelectedStudent is null)
             {
-                // UC-12: Register Student
-                result = await _studentService.RegisterStudentAsync(
-                    StudentNumberInput,
-                    NameInput,
-                    ContactInfoInput,
-                    IsAllowedToBorrowInput);
+                var created = await _api.CreateStudentAsync(
+                    StudentNumberInput.Trim(),
+                    NameInput.Trim(),
+                    contact);
+
+                if (IsAllowedToBorrowInput != created.IsEligible)
+                {
+                    await _api.SetStudentEligibilityAsync(created.Id, IsAllowedToBorrowInput);
+                }
+
+                await LoadAsync();
+                StatusMessage = HasError
+                    ? $"Student '{created.StudentNumber}' was saved, but the list could not be refreshed."
+                    : $"Student '{created.StudentNumber}' registered successfully.";
             }
             else
             {
-                // UC-13 / UC-14: edit details and change eligibility.
-                // Repeating the current values gives feedback instead of silently "saving" (BR-04).
                 if (IsUnchanged(SelectedStudent))
                 {
                     StatusMessage = "No changes to save: the details and eligibility are already set to these values.";
                     return;
                 }
 
-                result = await _studentService.UpdateStudentAsync(
-                    SelectedStudent.Id,
-                    StudentNumberInput,
-                    NameInput,
-                    ContactInfoInput,
-                    IsAllowedToBorrowInput);
-            }
+                var idText = SelectedStudent.Id.ToString(CultureInfo.InvariantCulture);
+                var detailsChanged =
+                    Student.NormalizeNumber(StudentNumberInput) != SelectedStudent.StudentNumber ||
+                    NameInput.Trim() != SelectedStudent.Name ||
+                    contact != SelectedStudent.ContactInfo;
 
-            if (!result.IsSuccess)
-            {
-                StatusMessage = result.ErrorMessage ?? "Operation failed.";
-                return;
-            }
+                if (detailsChanged)
+                {
+                    await _api.UpdateStudentAsync(
+                        idText,
+                        StudentNumberInput.Trim(),
+                        NameInput.Trim(),
+                        contact);
+                }
 
-            var savedNumber = Student.NormalizeNumber(StudentNumberInput);
-            await LoadAsync();
-            StatusMessage = HasError
-                ? $"Student '{savedNumber}' was saved, but the list could not be refreshed."
-                : $"Student '{savedNumber}' saved successfully.";
+                if (IsAllowedToBorrowInput != SelectedStudent.IsAllowedToBorrow)
+                {
+                    await _api.SetStudentEligibilityAsync(idText, IsAllowedToBorrowInput);
+                }
+
+                var savedNumber = Student.NormalizeNumber(StudentNumberInput);
+                await LoadAsync();
+                StatusMessage = HasError
+                    ? $"Student '{savedNumber}' was updated, but the list could not be refreshed."
+                    : $"Student '{savedNumber}' updated successfully.";
+            }
         }
         catch (Exception ex)
         {
-            StatusMessage = DescribeException(ex);
+            StatusMessage = ex is ApiClientException ? ex.Message : DescribeException(ex);
         }
     }
 
@@ -240,4 +248,10 @@ public partial class StudentManagementViewModel : ViewModelBase
         NameInput.Trim() == current.Name &&
         (string.IsNullOrWhiteSpace(ContactInfoInput) ? null : ContactInfoInput.Trim()) == current.ContactInfo &&
         IsAllowedToBorrowInput == current.IsAllowedToBorrow;
+
+    private static Student MapStudent(ApiStudentDto dto)
+    {
+        _ = int.TryParse(dto.Id, out var id);
+        return new Student(id, dto.StudentNumber, dto.FullName, dto.Contact, dto.IsEligible);
+    }
 }

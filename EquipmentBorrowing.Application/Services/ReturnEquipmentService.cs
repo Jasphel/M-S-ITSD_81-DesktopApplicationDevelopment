@@ -1,3 +1,4 @@
+using System;
 using EquipmentBorrowing.Application.Exceptions;
 using EquipmentBorrowing.Application.Interfaces;
 using EquipmentBorrowing.Application.Results;
@@ -88,7 +89,8 @@ public class ReturnEquipmentService
             return ReturnResult.Fail(ReturnFailureReason.EquipmentNotFound);
         }
 
-        borrowing.MarkAsReturned();
+        var utcReturnDate = DateTime.SpecifyKind(DateTime.UtcNow.Date, DateTimeKind.Utc);
+        borrowing.MarkAsReturned(utcReturnDate);
         equipment.MarkAsAvailable();
 
         await borrowingRepository.UpdateAsync(borrowing, cancellationToken);
